@@ -672,7 +672,7 @@ function dictate(target){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(S.timer){ stopTimer(); return render(); }
   if(rec){ recWant = false; rec.stop(); return; }
-  if(!SR || S.micBlocked){ if(!SR) S.micBlocked = true; startTimer(target); return render(); }
+  if(!SR || S.micBlocked){ if(!SR){ S.micBlocked = true; S.micReason = 'nosr'; } startTimer(target); return render(); }
   ttsStop();
   recWant = true; recTarget = target; startRec(SR, target); render();
 }
@@ -697,10 +697,22 @@ function tickTimer(){
   const base = recStats(recTarget).ms, t0 = S.timer ? S.timer.t0 : recT0;
   const x = Math.round((base + Date.now() - t0)/1000); el.textContent = Math.floor(x/60)+':'+String(x%60).padStart(2,'0');
 }
+function micReasonText(){
+  let framed = false; try { framed = window.self !== window.top; } catch(e){ framed = true; }
+  const r = S.micReason || '';
+  const why = r === 'nosr' ? "This browser doesn't support speech input. Use Google Chrome, Edge or Safari."
+    : framed && (r === 'not-allowed' || r === 'service-not-allowed') ? "This page is shown inside another site (like Claude) that doesn't allow the microphone. Open your own site's link directly for voice."
+    : r === 'not-allowed' ? "The browser blocked the microphone for this page."
+    : r === 'service-not-allowed' ? "The browser's speech service isn't available on this page."
+    : r === 'audio-capture' ? "No microphone was found, or another app is using it."
+    : r === 'network' ? "Speech input needs an internet connection to Google's speech service, and it couldn't connect."
+    : "The microphone isn't available on this page.";
+  return why + (r && r !== 'nosr' ? ` (browser error: ${esc(r)})` : '');
+}
 function micHelp(){
   if(!S.setup.voice) return '';
   if(!S.micBlocked) return `<p class="note" style="margin:8px 0 0">Microphone not working? <button class="link" data-act="usedictation">Use your device's dictation instead</button></p>`;
-  return `<div class="michelp"><b>Your browser isn't letting this page use the microphone.</b> You can still answer out loud with your device's own dictation:
+  return `<div class="michelp"><b>${micReasonText()}</b> You can still answer out loud with your device's own dictation:
     <ol><li>Press <b>Start answer timer</b>, so your pace can be measured.</li>
     <li>Turn on dictation in the answer box. On a Mac, press the <b>Fn</b> key twice (or the 🎤 key). On Windows, press <b>Windows + H</b>. On a phone, tap the 🎤 on your keyboard.</li>
     <li>Speak your answer, then press <b>Stop timer</b>.</li></ol>
@@ -724,7 +736,7 @@ function startRec(SR, target){
       const im = document.getElementById('interim-'+target); if(im) im.textContent = interim.trim();
     };
     rec.onerror = ev => {
-      if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed' || ev.error === 'audio-capture'){ recWant = false; S.micBlocked = true; S.error = null; }
+      if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed' || ev.error === 'audio-capture' || ev.error === 'network'){ recWant = false; S.micBlocked = true; S.micReason = ev.error; S.error = null; }
       else if(ev.error !== 'no-speech' && ev.error !== 'aborted'){ recWant = false; S.error = 'Voice input stopped. Check the text, then keep going.'; }
     };
     rec.onend = () => {
