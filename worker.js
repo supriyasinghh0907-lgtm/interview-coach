@@ -12,12 +12,35 @@ const MODELS = {
 
 const SYSTEM = 'You are the engine of an interview practice app. Reply with ONE valid JSON object and nothing else: no markdown, no code fences, no explanation.';
 
+// Models sometimes put real line breaks inside JSON strings, which JSON.parse rejects.
+function escapeNewlinesInStrings(t) {
+  let out = '', inStr = false, esc = false;
+  for (const ch of t) {
+    if (inStr) {
+      if (esc) { esc = false; out += ch; continue; }
+      if (ch === '\\') { esc = true; out += ch; continue; }
+      if (ch === '"') { inStr = false; out += ch; continue; }
+      if (ch === '\n') { out += '\\n'; continue; }
+      if (ch === '\r') continue;
+      if (ch === '\t') { out += '\\t'; continue; }
+      out += ch;
+    } else { if (ch === '"') inStr = true; out += ch; }
+  }
+  return out;
+}
+
+function tryParse(t) {
+  try { return JSON.parse(t); } catch {}
+  try { return JSON.parse(escapeNewlinesInStrings(t)); } catch {}
+  return null;
+}
+
 function extractJson(out) {
   if (out && typeof out === 'object') return out;
   const text = String(out || '').replace(/```json|```/g, '').trim();
-  try { return JSON.parse(text); } catch {}
+  const whole = tryParse(text); if (whole) return whole;
   const a = text.indexOf('{'), b = text.lastIndexOf('}');
-  if (a >= 0 && b > a) { try { return JSON.parse(text.slice(a, b + 1)); } catch {} }
+  if (a >= 0 && b > a) return tryParse(text.slice(a, b + 1));
   return null;
 }
 
