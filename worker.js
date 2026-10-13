@@ -7,7 +7,7 @@
 
 const MODELS = {
   default: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', // questions, scoring, reports
-  quick: '@cf/meta/llama-3.1-8b-instruct-fast',         // follow-up questions
+  quick: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',    // follow-up questions (the small 8B model wrote confusing follow-ups)
 };
 
 const SYSTEM = 'You are the engine of an interview practice app. Reply with ONE valid JSON object and nothing else: no markdown, no code fences, no explanation.';
