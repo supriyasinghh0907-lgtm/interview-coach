@@ -162,6 +162,1546 @@ details.more summary{color:var(--muted);font-weight:500}
 .keycard input{flex:1;min-width:220px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--paper);color:var(--ink)}
 .keyline{margin:0 0 12px}
 .shortwarn{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;background:var(--sheet);font-size:.95rem}
+.rwblock{margin-top:16px}
+.rwblock + .rwblock{border-top:1px solid var(--line);padding-top:14px}
+.rwq{margin:0 0 6px;font-family:var(--serif);color:var(--muted);font-style:italic}
+.rwlabel{font-family:var(--sans);font-size:.85em;color:var(--pen);letter-spacing:.02em}
+.michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
+.michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
+.speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
+.btn.sm{padding:6px 12px;font-size:.9rem}
+.interim{font-family:var(--serif);font-style:italic;color:var(--muted);margin:6px 0 0}
+.interim:empty{display:none}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;min-height:32px}
+.qhead .speakctl{margin:0}
+.qfocus{font-size:.88rem;color:var(--muted);margin:0 0 4px}
+.qrate{margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:.85rem}
+.rec{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;color:var(--warn);font-weight:600}
+.recdot{width:10px;height:10px;border-radius:50%;background:var(--warn);animation:pulse 1.1s ease-in-out infinite}
+.dcard{margin-bottom:10px}
+.drow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
+.calitem{margin-top:12px}
+.calrow{display:grid;grid-template-columns:150px 1fr 170px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.calrow .seg button{min-width:34px;padding:5px 8px}
+.calrow .bad{color:var(--warn);font-weight:600}
+label.mini{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);margin-top:6px}
+label.mini input{border:1px solid var(--line);border-radius:6px;padding:6px 10px;background:var(--paper);color:var(--ink);font-size:.92rem}
+details summary{cursor:pointer;font-weight:600}
+@media (max-width:820px){ .calrow{grid-template-columns:1fr} }
+@media (max-width:820px){ .drow{grid-template-columns:1fr 1fr} }
+@media (max-width:820px){
+  .grid2,.fb,.summary{grid-template-columns:1fr}
+  .metrics{grid-template-columns:1fr 1fr}
+  .selfrow{grid-template-columns:1fr}
+  .anchor{grid-column:1}
+  .bar{grid-template-columns:110px 1fr 36px}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const DIMS = [
+  {k:'relevance', name:'Relevance', a:['Answers a different question','Answers it but drifts','Directly answers what was asked and ties to the role']},
+  {k:'structure', name:'Structure', a:['Rambling, no clear arc','Has a shape but buries the point','Clear arc, point stated early']},
+  {k:'specificity', name:'Specificity', a:['Generic, could be anyone','Some real details, vague on own role','Concrete actions and a clear personal role']},
+  {k:'impact', name:'Impact', a:['No outcome mentioned','Outcome mentioned but not measured','Measured result and why it mattered']},
+  {k:'clarity', name:'Clarity', a:['Hard to follow','Understandable with effort','Easy to follow on first hearing']},
+];
+const DIMNAME = Object.fromEntries(DIMS.map(d=>[d.k,d.name]));
+const SAMPLE_RESUME = `Sam Okafor
+Product Analyst, Lumen Health (2023 to present)
+- Built a patient no-show dashboard in SQL and Looker used by 40 clinic managers every week
+- Ran an A/B test on appointment reminder texts; no-show rate fell from 18% to 13%
+- Worked with 3 engineers and a designer to ship a self-serve rescheduling flow; 2,100 reschedules in the first month
+Business Analyst Intern, Cartwheel Retail (Summer 2022)
+- Analyzed checkout drop-off across 60,000 sessions; my recommendation to remove one form step was adopted
+Projects
+- Built a Discord bot that schedules events for a 300-member gaming community
+Education: B.S. Information Systems, 2023
+Skills: SQL, Python, Looker, Figma, A/B testing`;
+const SAMPLE_JD = `Associate Product Manager, Creator Tools
+Pixelport is a platform where independent creators build and publish multiplayer games.
+What you'll do:
+- Define problems using data on creator behavior and experiment results
+- Write clear specs and work daily with engineering, design, and data science
+- Run experiments and decide what ships
+- Talk to creators to understand how they build, test, and publish games
+What we're looking for:
+- 0 to 2 years in product, analytics, or engineering
+- Strong SQL or data analysis skills
+- Clear written and verbal communication
+- Evidence of shipping something with a team
+- A genuine interest in games, creators, or online communities
+Nice to have: experience running A/B tests, or building something for a community you belong to.`;
+const S = {
+  view:'practice', step:'setup', busy:null, error:null, notice:null,
+  sample:undefined, store:null, saving:true, loaded:false,
+  profile:null, cur:null, answers:[], draft:{}, setup:{type:'Behavioral', level:'Entry', selfScore:true, voice:true, autoRead:true},
+  rec:{}, speakNext:null,
+  disputeOpen:null, focus:null, cal:[], calOn:false, blind:true, r2:false, calRun:null, dl:null,
+  rubric:null, wq:Promise.resolve()
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ============================================================
+   SETTINGS. After you deploy the worker (see SETUP.md), paste its
+   address into PROXY_URL. That's the only change you need.
+   With PROXY_URL set, the app runs on free Cloudflare Workers AI and
+   visitors use it directly. Left empty, it falls back to asking each
+   visitor for their own free Gemini API key.
+   Never paste your own API key into this file: the file is public.
+   ============================================================ */
+const CONFIG = {
+  PROXY_URL: 'https://interview-coach-api.supriyasinghh0907.workers.dev',
+  // Optional shortcut instead of the worker: a Gemini key RESTRICTED to your website in
+  // Google Cloud Console (see SETUP.md, "Easier option"). Visitors can see this key.
+  SITE_KEY: '',
+  MODEL_DEFAULT: 'gemini-flash-latest',
+  MODEL_QUICK: 'gemini-flash-lite-latest',
+};
+const KEY_STORE = 'ic_gemini_key';
+const getKey = () => { if(CONFIG.SITE_KEY) return CONFIG.SITE_KEY; try { return localStorage.getItem(KEY_STORE) || ''; } catch(e){ return S.memKey || ''; } };
+const setKey = k => { try { k ? localStorage.setItem(KEY_STORE, k) : localStorage.removeItem(KEY_STORE); } catch(e){ S.memKey = k; } };
+const needsKey = () => !CONFIG.PROXY_URL && !getKey();
+async function callModel(prompt, tier){
+  const t = tier === 'quick' ? 'quick' : 'default';
+  const body = {contents:[{role:'user', parts:[{text:prompt}]}], generationConfig:{responseMimeType:'application/json', temperature: t==='quick' ? 0.7 : 0.4}};
+  let res;
+  try {
+    if(CONFIG.PROXY_URL){
+      res = await fetch(CONFIG.PROXY_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt, tier:t})});
+    } else {
+      const key = getKey(); if(!key) throw {code:'no_key'};
+      const model = t === 'quick' ? CONFIG.MODEL_QUICK : CONFIG.MODEL_DEFAULT;
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {method:'POST', headers:{'Content-Type':'application/json', 'x-goog-api-key':key}, body:JSON.stringify(body)});
+    }
+  } catch(e){ if(e && e.code) throw e; throw {code:'network'}; }
+  let data = null; try { data = await res.json(); } catch(e){}
+  if(CONFIG.PROXY_URL){
+    if(!res.ok || !data || data.error){ const c = data && data.error && data.error.code;
+      throw {code: res.status===429 || c==='daily_limit' ? 'rate_limited' : res.status===413 ? 'prompt_too_large' : c==='bad_json' ? 'invalid_json' : 'server'}; }
+    if(data.json && typeof data.json === 'object') return data.json;
+    throw {code:'invalid_json'};
+  }
+  if(!res.ok){ const st = res.status;
+    throw {code: st===429 ? 'rate_limited' : st===413 ? 'prompt_too_large' : (!CONFIG.PROXY_URL && (st===400 || st===401 || st===403)) ? 'bad_key' : 'server'}; }
+  const cand = data && data.candidates && data.candidates[0];
+  if(!cand) throw {code: data && data.promptFeedback && data.promptFeedback.blockReason ? 'refused' : 'empty_completion'};
+  if(cand.finishReason === 'SAFETY' || cand.finishReason === 'PROHIBITED_CONTENT') throw {code:'refused'};
+  const text = ((cand.content && cand.content.parts) || []).map(p=>p.text || '').join('');
+  if(!text.trim()) throw {code:'empty_completion'};
+  try { return JSON.parse(text.replace(/```json|```/g, '').trim()); } catch(e){ throw {code:'invalid_json'}; }
+}
+function localStore(prefix){
+  const k = id => prefix + ':' + id;
+  return {
+    doc: id => ({ set: async d => localStorage.setItem(k(id), JSON.stringify(d)), delete: async () => localStorage.removeItem(k(id)) }),
+    get: async () => ({ docs: Object.keys(localStorage).filter(x => x.startsWith(prefix + ':')).map(x => ({ id: x.slice(prefix.length + 1), data: () => { try { return JSON.parse(localStorage.getItem(x)); } catch(e){ return null; } } })) }),
+  };
+}
+const downloadsShim = { save: async ({filename, data}) => {
+  const url = URL.createObjectURL(new Blob([data], {type:'text/csv'})); const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 2000);
+} };
+function keyCard(){
+  if(CONFIG.PROXY_URL || CONFIG.SITE_KEY) return '';
+  const k = getKey();
+  if(k) return `<p class="note keyline">Using your Gemini API key ending in ${esc(k.slice(-4))}. <button class="link" data-act="clearkey">Remove key</button></p>`;
+  return `<div class="sheet keycard"><h2>Add a free Gemini API key</h2>
+    <p class="note" style="margin-top:0">This demo runs on Google's free Gemini API. Getting a key takes about a minute, with no credit card: open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>, sign in, and click <b>Create API key</b>. Your key is stored only in this browser.</p>
+    <div class="row"><input id="apikey" type="password" placeholder="Paste your API key" autocomplete="off" aria-label="Gemini API key"><button class="btn pen" data-act="savekey">Save key</button></div></div>`;
+}
+const avg = xs => xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null;
+const fmt = n => n==null ? '–' : (Math.round(n*10)/10).toFixed(1);
+
+/* ---------- storage ---------- */
+function persist(id, data){
+  if(!S.store) return;
+  S.wq = S.wq.then(async () => {
+    if(!S.store) return;
+    try { await S.store.doc(id).set(data); }
+    catch(e){ S.store = null; S.saving = false; S.saveNote = "Your progress isn't saved in this view. It lasts until you close the page."; render(); }
+  });
+}
+function remove(id){
+  if(!S.store) return;
+  S.wq = S.wq.then(async () => { if(!S.store) return; try { await S.store.doc(id).delete(); } catch(e){} });
+}
+/* ---------- anonymous usage metrics (no resume or answer text) ---------- */
+function anonId(){
+  try { let v = localStorage.getItem('ic_anon'); if(!v){ v = 'u' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); localStorage.setItem('ic_anon', v); } return v; }
+  catch(e){ return S.anon || (S.anon = 'u' + Math.random().toString(36).slice(2,10)); }
+}
+function track(t, extra){
+  if(!S.metrics) return;
+  try { S.metrics.add({t, at:Date.now(), u:anonId(), ...(extra||{})}).catch(()=>{ S.metrics = null; }); } catch(e){ S.metrics = null; }
+}
+const saveProfile = () => S.profile && persist('profile', {kind:'profile', ...S.profile});
+const saveAnswer = a => persist(a.id, {kind:'answer', ...a});
+
+/* ---------- Claude ---------- */
+function errCopy(code){
+  return ({
+    no_key:"Add your free Gemini API key at the top of the page to start.",
+    bad_key:"Gemini didn't accept that API key. Remove it and paste it again.",
+    rate_limited: CONFIG.PROXY_URL ? "Today's free practice limit for this demo was reached. Please come back tomorrow." : "The free Gemini limit was reached. Wait a minute and try again, or come back later today.",
+    prompt_too_large:"Your resume or job description is too long. Trim it and try again.",
+    invalid_json:"The response came back in the wrong format. Try again.",
+    refused:"The model declined this request. Rephrase your answer and try again.",
+    empty_completion:"The model returned nothing. Try again.",
+    network:"Couldn't reach the AI service. Check your connection and try again.",
+    server:"The AI service had a problem answering. Try again in a moment.",
+  })[code] || "Something went wrong. Try again.";
+}
+async function ask(prompt, tier){
+  if(needsKey()) throw new Error(errCopy('no_key'));
+  try { return await S.sample.json(prompt, {modelTier:tier || 'default', cache:false}); }
+  catch(e){ if(e && e.code === 'cancelled') throw new Error('Stopped.'); throw new Error(errCopy(e && e.code)); }
+}
+async function run(label, fn){
+  S.busy = label; S.error = null; render();
+  try { await fn(); }
+  catch(e){ S.error = e.message || String(e); }
+  finally { S.busy = null; render(); }
+}
+
+/* ---------- prompts ---------- */
+const reqLines = () => (S.profile.setup.requirements||[]).map(r=>`${r.id}: ${r.text}`).join('\n');
+const factLines = () => ((S.profile && S.profile.setup.facts)||[]).map(f=>`- ${f}`).join('\n') || '- (none listed)';
+const DEFAULT_ANCHORS = {
+  relevance:['answers a different question','answers it but drifts','directly answers what was asked and ties to the role'],
+  structure:['rambling, no clear arc','has a shape but buries the point','clear arc (situation, action, result or similar) with the point stated early'],
+  specificity:['generic ("I worked with the team")','some real details but vague on their own role','concrete actions, a clear personal role, real details'],
+  impact:['no outcome','outcome mentioned but not measured','measured result and why it mattered'],
+  clarity:['hard to follow','understandable with effort','easy to follow on first hearing and concise'],
+};
+S.rubric = {current:{version:'v1', anchors:JSON.parse(JSON.stringify(DEFAULT_ANCHORS))}, history:[]};
+const rubricNow = () => S.rubric.current;
+const rubricLines = () => DIMS.map(d => { const a = rubricNow().anchors[d.k];
+  return `${d.k}: 1 ${a[0]}; 3 ${a[1]}; 5 ${a[2]}.` + (d.k==='impact' ? ' Use null for score if the question does not call for an outcome, such as a motivation question.' : ''); }).join('\n');
+function calPrompt(it){
+  return `You are scoring a mock interview answer. Be honest and calibrated: a typical decent answer scores 3. Reserve 5 for answers a hiring manager would remember.
+
+Question: "${it.question}"
+Candidate answer:
+<<<
+${it.answer}
+>>>
+${it.followAnswer ? `Follow-up question: "${it.followup || '(follow-up)'}"
+Candidate follow-up answer:
+<<<
+${it.followAnswer}
+>>>
+` : ''}
+RUBRIC. Score each 1 to 5 using these anchors.
+${rubricLines()}
+
+EVIDENCE RULE. For each dimension, copy the exact words (5 to 25 words) from the candidate's answers that most justify the score, character for character, with no edits and no ellipses. If no passage supports the score, set evidence to "" and say what is missing in the reason. Set confidence to "low" when the answer is too short or ambiguous to judge, otherwise "medium" or "high".
+
+Reply with only JSON:
+{"scores":{"relevance":{"score":3,"evidence":"...","reason":"one sentence","confidence":"high"},"structure":{...},"specificity":{...},"impact":{...},"clarity":{...}}}`;
+}
+
+function setupPrompt(resume, jd){
+  return `You are setting up a mock interview for a job candidate.
+
+JOB DESCRIPTION:
+<<<
+${jd}
+>>>
+
+RESUME:
+<<<
+${resume}
+>>>
+
+Do three things.
+1. List the 5 to 7 most important requirements this job description asks for, each a short plain-language phrase under 12 words.
+2. List the factual claims in the resume as short bullets: roles, employers, projects, tools, and every number or metric copied exactly. Up to 30 bullets. Add nothing that is not written in the resume.
+3. Write the FIRST interview question a sharp, fair interviewer for this role would ask. Interview style: ${S.setup.type}. Candidate level: ${S.setup.level}. Target the single most important requirement. Make it specific to this candidate by referencing a real project, role or claim from the resume where it fits naturally. One question that asks one thing, under 35 words, not a multi-part list. Behavioral style means a past situation. Role-specific style means a question that tests a core skill of this particular job, the way its hiring manager would. Mixed means either.
+
+Reply with only JSON in this shape:
+{"role":"job title","company":"company name or empty string","requirements":[{"id":"r1","text":"..."}],"facts":["..."],"first_question":{"question":"...","requirement_ids":["r1"],"kind":"behavioral|role-specific|technical|motivation","angle":"what this question tests, under 12 words"}}`;
+}
+
+function questionPrompt(){
+  const p = S.profile, skipped = p.skipped || [], asked = [...new Set([...S.answers.map(a=>a.q.question), ...skipped.map(x=>x.question)])];
+  const cov = (p.setup.requirements||[]).map(r=>`${r.id}: ${S.answers.filter(a=>(a.q.requirement_ids||[]).includes(r.id)).length + skipped.filter(x=>(x.requirement_ids||[]).includes(r.id)).length}`).join(', ');
+  return `You are a sharp, fair interviewer for the role of ${p.setup.role || 'this job'}${p.setup.company ? ' at '+p.setup.company : ''}. Interview style: ${p.type}. Candidate level: ${p.level}.
+
+Requirements of the role:
+${reqLines()}
+
+Candidate's resume facts:
+${factLines()}
+
+Questions already asked or skipped (do not repeat, closely paraphrase, or ask about the same story again):
+${asked.length ? asked.map(q=>'- '+q).join('\n') : '- none yet'}
+
+Questions asked per requirement so far: ${cov}
+
+Write ONE interview question.
+${S.focus ? '- Target requirement '+S.focus+'.' : '- Target the requirement with the fewest questions so far.'}
+- Make it specific to this candidate: reference a real project, role or claim from the resume where it fits naturally.
+- Ask what a real interviewer at this level would ask. One question that asks one thing, under 35 words, not a multi-part list.
+- Behavioral style means a past situation. Role-specific style means a question that tests a core skill of this particular job, the way its hiring manager would: for example a product design question for a product manager, a technical problem for an engineer, a pitch or objection for a salesperson, or designing a training program for an enablement role. Mixed means either.
+
+Reply with only JSON: {"question":"...","requirement_ids":["r2"],"kind":"behavioral|role-specific|technical|motivation","angle":"what this question tests, under 12 words"}`;
+}
+
+function followupPrompt(c){
+  return `You are an interviewer. You asked: "${c.q.question}"
+
+The candidate answered:
+<<<
+${c.answer}
+>>>
+
+Ask ONE follow-up question a sharp interviewer would ask next. Aim it at the weakest or vaguest part of the answer, for example their personal role versus the team's, how they measured the result, a tradeoff they made, or what they would do differently. Under 30 words. No feedback or praise.
+
+Reply with only JSON: {"followup":"...","probing":"what it probes, under 8 words"}`;
+}
+
+function againPrompt(c){
+  return `You are an interviewer. You asked: "${c.q.question}"
+
+The candidate answered:
+<<<
+${c.answer}
+>>>
+
+You then asked a follow-up to probe ${c.probing || 'a weak spot'}: "${c.followup}"
+The candidate's follow-up answer:
+<<<
+${c.followAnswer}
+>>>
+
+Decide whether a real interviewer would ask ONE more follow-up. Ask again only if the follow-up answer still dodged or stayed vague on what you were probing, or revealed something important that clearly needs one more question. If the answer was clear enough, do not ask again. Most of the time, one follow-up is enough.
+
+Reply with only JSON: {"ask_again":true,"reason":"why, under 12 words","followup":"the question, under 30 words, or an empty string"}`;
+}
+function scorePrompt(c){
+  const reqs = (S.profile.setup.requirements||[]).filter(r=>(c.q.requirement_ids||[]).includes(r.id)).map(r=>r.text).join('; ');
+  return `You are scoring a mock interview answer. Be honest and calibrated: a typical decent answer scores 3. Reserve 5 for answers a hiring manager would remember.
+
+Role: ${S.profile.setup.role || 'unspecified'}. Level: ${S.profile.level}. Requirement this question targets: ${reqs || 'general'}.
+
+Question: "${c.q.question}"
+Candidate answer:
+<<<
+${c.answer}
+>>>
+Follow-up question: "${c.followup}"
+Candidate follow-up answer:
+<<<
+${c.followAnswer}
+>>>
+${c.followAnswer2 ? `Second follow-up question: "${c.followup2}"
+Candidate second follow-up answer:
+<<<
+${c.followAnswer2}
+>>>
+` : ''}
+Resume facts (the only facts known to be true about the candidate):
+${factLines()}
+
+RUBRIC. Score each 1 to 5 using these anchors.
+${rubricLines()}
+
+EVIDENCE RULE. For each dimension, copy the exact words (5 to 25 words) from the candidate's answers that most justify the score, character for character, with no edits and no ellipses. If no passage supports the score (for example the score is low because something is missing), set evidence to "" and say what is missing in the reason. Set confidence to "low" when the answer is too short or ambiguous to judge, otherwise "medium" or "high".
+
+SHORT OR NON-ANSWERS. If the answer is very short, off-topic, or the candidate says they don't know, score it honestly (usually 1 or 2), say so plainly and kindly in "fix", and make the stronger version a short model structure the candidate could follow, built from their resume facts, with placeholders for anything you don't know.
+
+STRONGER VERSIONS. Write a stronger answer for EACH question the candidate was asked: the main question, the follow-up, and the second follow-up if there was one. Write as the candidate, in first person.
+- Pick the structure that fits the question and name it in "structure". For a question about a past experience ("tell me about a time", "how did you...", "describe a situation"), use STAR: put each part on its own line, starting with "Situation:", "Task:", "Action:" and "Result:". For a product, design or strategy question, use: "Clarify:", "Approach:", "Tradeoffs:", "Measure:". For a motivation question, use: "Why the role:", "Why me:", "Why now:".
+- Main answer: under 150 words. Each follow-up answer: under 70 words, answering that follow-up directly; it can use the same labels when that helps, or be two or three plain sentences.
+- Use ONLY facts from the candidate's answers and the resume facts. Never invent numbers, names, tools, or outcomes. Where a stronger answer needs a detail the candidate did not give, insert a bracketed placeholder such as [add the % change in retention].
+
+Reply with only JSON:
+{"scores":{"relevance":{"score":3,"evidence":"...","reason":"one sentence","confidence":"high"},"structure":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"specificity":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"impact":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"clarity":{"score":3,"evidence":"...","reason":"...","confidence":"medium"}},"strength":"the single best thing, one sentence","fix":"the single most important change, one sentence","structure":"STAR","rewrites":[{"part":"main","text":"Situation: ...\nTask: ...\nAction: ...\nResult: ..."},{"part":"followup","text":"..."}${c.followAnswer2 ? ',{"part":"followup2","text":"..."}' : ''}]}`;
+}
+
+/* ---------- checks the page runs on the model's output ---------- */
+function findSpan(text, quote){
+  const toks = (quote || '').match(/[\p{L}\p{N}]+/gu);
+  if(!toks || toks.length < 3) return null;
+  const re = new RegExp(toks.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('[^\\p{L}\\p{N}]+'), 'iu');
+  const m = re.exec(text);
+  return m ? [m.index, m.index + m[0].length] : null;
+}
+function verify(c, scores){
+  for(const d of DIMS){
+    const s = scores[d.k] || (scores[d.k] = {score:null, evidence:'', reason:'', confidence:'low'});
+    let n = Number(s.score); s.score = (s.score === null || isNaN(n)) ? null : Math.max(1, Math.min(5, Math.round(n)));
+    if(!s.evidence){ s.verified = null; continue; }
+    const a = findSpan(c.answer, s.evidence), b = a ? null : findSpan(c.followAnswer || '', s.evidence), x = (a || b) ? null : findSpan(c.followAnswer2 || '', s.evidence);
+    s.verified = !!(a || b || x); s.span = a ? {w:'a', s:a[0], e:a[1]} : b ? {w:'b', s:b[0], e:b[1]} : x ? {w:'c', s:x[0], e:x[1]} : null;
+  }
+  return scores;
+}
+function numberFlags(rewrite, source){
+  const clean = (rewrite || '').replace(/\[[^\]]*\]/g, ' ');
+  const known = new Set((source.replace(/(\d),(\d)/g, '$1$2').match(/\d+(?:\.\d+)?/g) || []));
+  const nums = (clean.match(/\d[\d,]*(?:\.\d+)?/g) || []).map(n=>n.replace(/,/g,''));
+  return [...new Set(nums)].filter(n => !known.has(n));
+}
+
+/* ---------- flow ---------- */
+async function readFile(f){
+  if(/\.pdf$/i.test(f.name) || f.type === 'application/pdf'){
+    if(!window.pdfjsLib) throw new Error("PDF reading didn't load. Paste your resume text instead.");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await pdfjsLib.getDocument({data: await f.arrayBuffer()}).promise;
+    let out = '';
+    for(let i=1; i<=Math.min(pdf.numPages, 6); i++){
+      const page = await pdf.getPage(i), tc = await page.getTextContent();
+      out += tc.items.map(t=>t.str).join(' ').replace(/\s+/g,' ') + '\n\n';
+    }
+    if(out.trim().length < 50) throw new Error("This PDF has no readable text, likely a scan. Paste your resume text instead.");
+    return out.trim();
+  }
+  return (await f.text()).trim();
+}
+
+function startSetup(){
+  const resume = ($('#resume').value || '').trim().slice(0, 14000);
+  const jd = ($('#jd').value || '').trim().slice(0, 14000);
+  S.draft.resume = resume; S.draft.jd = jd;
+  if(resume.length < 150){ S.error = 'Add your resume: paste the text or upload a PDF.'; return render(); }
+  if(jd.length < 150){ S.error = 'Paste the full job description so questions match the role.'; return render(); }
+  run('Reading the job and writing your first question…', async () => {
+    const r = await ask(setupPrompt(resume, jd), 'default');
+    if(!r || !Array.isArray(r.requirements) || !r.requirements.length) throw new Error("Couldn't pull requirements from that job description. Check it's the full posting and try again.");
+    r.requirements = r.requirements.slice(0,7).map((x,i)=>({id: String(x.id || 'r'+(i+1)), text: String(x.text || x)}));
+    r.facts = (Array.isArray(r.facts) ? r.facts : []).map(String).slice(0,30);
+    S.profile = {resume, jd, type:S.setup.type, level:S.setup.level, selfScore:S.setup.selfScore, voice:S.setup.voice, autoRead:S.setup.autoRead, setup:r, createdAt:Date.now(), session:'s'+Date.now()};
+    saveProfile(); S.editSetup = false;
+    track('setup', {style:S.setup.type, level:S.setup.level, voice:!!S.setup.voice, sample:!!S.usedSample});
+    const fq = r.first_question; delete S.profile.setup.first_question; saveProfile();
+    if(fq && fq.question){ S.focus = null; setQuestion({...fq, requirement_ids:(fq.requirement_ids||[]).map(String).filter(id=>r.requirements.some(x=>x.id===id))}); }
+    else await newQuestion();
+  });
+}
+
+function setQuestion(q){
+  if(!q || !q.question) throw new Error("Couldn't write a question. Try again.");
+  S.cur = {id:'a'+Date.now(), q:{question:String(q.question), requirement_ids:(q.requirement_ids||[]).map(String), kind:String(q.kind||''), angle:String(q.angle||'')}, attempt:1};
+  S.draft.answer = ''; S.draft.follow = ''; S.step = 'question'; S.view = 'practice'; S.rec = {}; track('question', {kind:S.cur.q.kind}); S.speakNext = S.cur.q.question;
+}
+async function newQuestion(){
+  const q = await ask(questionPrompt(), 'default');
+  S.focus = null;
+  setQuestion(q);
+}
+const nextQuestion = () => run('Writing your next question…', newQuestion);
+
+function retry(){
+  const prev = S.cur;
+  S.cur = {id:'a'+Date.now(), q:prev.q, attempt:(prev.attempt||1)+1, retryOf:prev.retryOf || prev.id};
+  S.draft.answer = ''; S.draft.follow = ''; S.step = 'question'; S.error = null; S.rec = {}; S.speakNext = S.cur.q.question; render();
+}
+
+function submitAnswer(){
+  if(S.timer) stopTimer();
+  const v = ($('#answer').value || '').trim();
+  S.draft.answer = v;
+  { const n = (v.match(/\S+/g) || []).length;
+    if(n < 3){ S.error = 'Say or type at least a sentence before submitting.'; return render(); }
+    if(n < 20 && !S.forceShort){ S.shortWarn = {target:'answer', n}; return render(); } }
+  S.cur.answer = v; track('answer', {voice:!!(S.rec.answer && S.rec.answer.raw.trim()), retry:(S.cur.attempt||1) > 1});
+  S.cur.delivery = (S.rec.answer && S.rec.answer.raw.trim()) ? {answer: delivery(S.rec.answer)} : null;
+  run('Thinking of a follow-up…', async () => {
+    const f = await ask(followupPrompt(S.cur), 'quick');
+    if(!f || !f.followup) throw new Error("Couldn't write a follow-up. Try again.");
+    S.cur.followup = String(f.followup); S.cur.probing = String(f.probing || ''); S.speakNext = S.cur.followup;
+    S.step = 'followup';
+  });
+}
+
+function submitFollow(){
+  if(S.timer) stopTimer();
+  const v = ($('#follow').value || '').trim();
+  S.draft.follow = v;
+  { const n = (v.match(/\S+/g) || []).length;
+    if(n < 2){ S.error = 'Say or type at least a few words before submitting.'; return render(); }
+    if(n < 8 && !S.forceShort){ S.shortWarn = {target:'follow', n}; return render(); } }
+  S.cur.followAnswer = v; S.cur.self = {};
+  if(S.rec.follow && S.rec.follow.raw.trim()) S.cur.delivery = {...(S.cur.delivery||{}), follow: delivery(S.rec.follow)};
+  S.error = null;
+  run('Deciding whether to dig deeper…', async () => {
+    let g = null;
+    try { g = await ask(againPrompt(S.cur), 'quick'); } catch(e){ g = null; }
+    if(g && g.ask_again && g.followup && String(g.followup).trim()){
+      S.cur.followup2 = String(g.followup).trim(); track('followup2'); S.cur.againReason = String(g.reason || '');
+      S.draft.follow2 = ''; S.step = 'followup2'; S.speakNext = S.cur.followup2; return;
+    }
+    S.cur.followup2 = ''; S.cur.followAnswer2 = '';
+    afterFollowups();
+  });
+}
+function submitFollow2(){
+  if(S.timer) stopTimer();
+  const v = ($('#follow2').value || '').trim();
+  S.draft.follow2 = v;
+  { const n = (v.match(/\S+/g) || []).length;
+    if(n < 2){ S.error = 'Say or type at least a few words before submitting.'; return render(); }
+    if(n < 8 && !S.forceShort){ S.shortWarn = {target:'follow2', n}; return render(); } }
+  S.cur.followAnswer2 = v;
+  if(S.rec.follow2 && S.rec.follow2.raw.trim()) S.cur.delivery = {...(S.cur.delivery||{}), follow2: delivery(S.rec.follow2)};
+  S.error = null; afterFollowups(); render();
+}
+function afterFollowups(){ if(S.profile.selfScore){ S.step = 'self'; } else { S.step = 'scoring'; setTimeout(score, 0); } }
+
+function score(){
+  run('Scoring against the rubric and checking its evidence…', async () => {
+    const c = S.cur;
+    const r = await ask(scorePrompt(c), 'default');
+    if(!r || !r.scores) throw new Error("The scoring came back incomplete. Try again.");
+    c.result = {
+      scores: verify(c, r.scores),
+      strength: String(r.strength || ''), fix: String(r.fix || ''), structure: String(r.structure || ''),
+      rewrites: (Array.isArray(r.rewrites) ? r.rewrites : []).filter(x => x && x.text).map(x => ({part: String(x.part || 'main'), text: String(x.text)})).slice(0, 3),
+      rewrite: Array.isArray(r.rewrites) && r.rewrites.length ? r.rewrites.filter(x => x && x.text).map(x => String(x.text)).join('\n\n') : String(r.rewrite || ''),
+    };
+    { const src = [c.answer, c.followAnswer, c.followAnswer2 || '', S.profile.resume, c.q.question].join('\n');
+      c.result.flags = numberFlags(c.result.rewrite, src); c.result.nameFlags = nameFlags(c.result.rewrite, src); }
+    if(!S.profile.session){ S.profile.session = 's'+Date.now(); saveProfile(); }
+    c.createdAt = Date.now(); c.disputes = c.disputes || {}; c.session = S.profile.session;
+    S.answers = S.answers.filter(a=>a.id !== c.id).concat([c]);
+    saveAnswer(c);
+    { const sc = c.result.scores, ev = DIMS.filter(d=>sc[d.k].evidence), sd = DIMS.filter(d=>c.self && c.self[d.k]!=null && sc[d.k].score!=null);
+      track('scored', {avg: avg(DIMS.map(d=>sc[d.k].score).filter(v=>v!=null)), quotes:ev.length, quotesOk:ev.filter(d=>sc[d.k].verified).length, lowConf:DIMS.filter(d=>sc[d.k].confidence==='low').length, flags:(c.result.flags||[]).length + (c.result.nameFlags||[]).length, selfN:sd.length, selfAgree:sd.filter(d=>Math.abs(c.self[d.k]-sc[d.k].score)<=1).length, second:!!c.followAnswer2}); }
+    S.step = 'feedback';
+  });
+}
+
+function saveDispute(dim){
+  const v = ($('#disp-'+dim).value || '').trim();
+  if(!v){ S.disputeOpen = null; return render(); }
+  S.cur.disputes = {...(S.cur.disputes||{}), [dim]: v};
+  saveAnswer(S.cur); track('dispute', {dim}); S.disputeOpen = null; render();
+}
+
+/* ---------- dictation ---------- */
+let rec = null, recTarget = null, recWant = false, recTimer = null, recT0 = 0;
+const recStats = t => (S.rec[t] = S.rec[t] || {ms:0, pauses:0, raw:''});
+function dictate(target){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(S.timer){ stopTimer(); return render(); }
+  if(rec){ recWant = false; rec.stop(); return; }
+  if(!SR || S.micBlocked){ if(!SR){ S.micBlocked = true; S.micReason = 'nosr'; } startTimer(target); return render(); }
+  ttsStop();
+  recWant = true; recTarget = target; startRec(SR, target); render();
+}
+/* fallback when the page can't use the microphone: the person dictates with their device's own
+   dictation, and the page only times the answer so pace and filler words can still be measured */
+function startTimer(target){
+  ttsStop();
+  const ta = document.getElementById(target);
+  S.timer = {target, t0:Date.now(), base: ta ? ta.value : ''}; recTarget = target;
+  if(!recTimer) recTimer = setInterval(tickTimer, 500);
+  setTimeout(() => { const el = document.getElementById(target); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }, 50);
+}
+function stopTimer(){
+  const t = S.timer; if(!t) return;
+  const st = recStats(t.target), ta = document.getElementById(t.target), now = ta ? ta.value : (S.draft[t.target] || '');
+  st.ms += Date.now() - t.t0; st.noPauses = true;
+  st.raw += ' ' + (now.startsWith(t.base) ? now.slice(t.base.length) : now);
+  S.draft[t.target] = now; S.timer = null; recTarget = null; clearInterval(recTimer); recTimer = null;
+}
+function tickTimer(){
+  const el = document.getElementById('rec-timer'); if(!el || !recTarget) return;
+  const base = recStats(recTarget).ms, t0 = S.timer ? S.timer.t0 : recT0;
+  const x = Math.round((base + Date.now() - t0)/1000); el.textContent = Math.floor(x/60)+':'+String(x%60).padStart(2,'0');
+}
+function micReasonText(){
+  let framed = false; try { framed = window.self !== window.top; } catch(e){ framed = true; }
+  const r = S.micReason || '';
+  const why = r === 'nosr' ? "This browser doesn't support speech input. Use Google Chrome, Edge or Safari."
+    : framed && (r === 'not-allowed' || r === 'service-not-allowed') ? "This page is shown inside another site (like Claude) that doesn't allow the microphone. Open your own site's link directly for voice."
+    : r === 'not-allowed' ? "The browser blocked the microphone for this page."
+    : r === 'service-not-allowed' ? "The browser's speech service isn't available on this page."
+    : r === 'audio-capture' ? "No microphone was found, or another app is using it."
+    : r === 'network' ? "Speech input needs an internet connection to Google's speech service, and it couldn't connect."
+    : "The microphone isn't available on this page.";
+  return why + (r && r !== 'nosr' ? ` (browser error: ${esc(r)})` : '');
+}
+function micHelp(){
+  if(!S.setup.voice) return '';
+  if(!S.micBlocked) return `<p class="note" style="margin:8px 0 0">Microphone not working? <button class="link" data-act="usedictation">Use your device's dictation instead</button></p>`;
+  return `<div class="michelp"><b>${micReasonText()}</b> You can still answer out loud with your device's own dictation:
+    <ol><li>Press <b>Start answer timer</b>, so your pace can be measured.</li>
+    <li>Turn on dictation in the answer box. On a Mac, press the <b>Fn</b> key twice (or the 🎤 key). On Windows, press <b>Windows + H</b>. On a phone, tap the 🎤 on your keyboard.</li>
+    <li>Speak your answer, then press <b>Stop timer</b>.</li></ol>
+    <span class="note">If you blocked the microphone by accident: click the icon left of the address bar, set Microphone to Allow, then reload and press <button class="link" data-act="mictry">try the microphone again</button>.</span></div>`;
+}
+function startRec(SR, target){
+  const st = recStats(target);
+  try {
+    rec = new SR(); rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US';
+    recT0 = Date.now(); let last = recT0;
+    rec.onresult = e => {
+      const now = Date.now(); if(now - last > 3000 && st.raw.trim()) st.pauses++; last = now;
+      const ta = document.getElementById(target); let interim = '';
+      for(let i=e.resultIndex; i<e.results.length; i++){
+        const t = e.results[i][0].transcript.trim(); if(!t) continue;
+        if(e.results[i].isFinal){
+          st.raw += ' ' + t;
+          if(ta){ ta.value += (ta.value && !/\s$/.test(ta.value) ? ' ' : '') + t; S.draft[target] = ta.value; ta.dispatchEvent(new Event('input')); }
+        } else interim += t + ' ';
+      }
+      const im = document.getElementById('interim-'+target); if(im) im.textContent = interim.trim();
+    };
+    rec.onerror = ev => {
+      if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed' || ev.error === 'audio-capture' || ev.error === 'network'){ recWant = false; S.micBlocked = true; S.micReason = ev.error; S.error = null; }
+      else if(ev.error !== 'no-speech' && ev.error !== 'aborted'){ recWant = false; S.error = 'Voice input stopped. Check the text, then keep going.'; }
+    };
+    rec.onend = () => {
+      st.ms += Date.now() - recT0;
+      if(recWant){ startRec(SR, target); return; }
+      rec = null; recTarget = null; clearInterval(recTimer); recTimer = null; render();
+    };
+    rec.start();
+    if(!recTimer) recTimer = setInterval(() => { const el = document.getElementById('rec-timer'); if(el && rec && recTarget) tickTimer(); }, 500);
+  } catch(e){ rec = null; recTarget = null; recWant = false; clearInterval(recTimer); recTimer = null; S.error = "Voice input couldn't start here. Type your answer instead."; render(); }
+}
+function speak(text){
+  if(!window.speechSynthesis || !text) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text), vs = speechSynthesis.getVoices();
+    const v = vs.find(v=>/^en/i.test(v.lang) && /natural|google|samantha|daniel|aria|jenny/i.test(v.name)) || vs.find(v=>/^en/i.test(v.lang));
+    if(v) u.voice = v; u.rate = 1;
+    const tok = (S.ttsTok = (S.ttsTok||0) + 1);
+    u.onend = u.onerror = () => { if(tok !== S.ttsTok) return; S.tts = 'idle'; ttsUpdate(); };
+    S.tts = 'speaking'; speechSynthesis.speak(u); ttsUpdate();
+  } catch(e){ S.tts = 'idle'; ttsUpdate(); }
+}
+function speakCtl(){
+  const t = S.tts || 'idle';
+  if(t === 'speaking') return `<span class="rec" style="color:var(--pen)"><span class="recdot" style="background:var(--pen)"></span>Reading aloud</span><button class="btn ghost sm" data-act="tts-pause">Pause</button><button class="btn ghost sm" data-act="tts-stop">Stop, I'll read it</button>`;
+  if(t === 'paused') return `<span class="note">Paused</span><button class="btn ghost sm" data-act="tts-resume">Resume</button><button class="btn ghost sm" data-act="tts-stop">Stop</button>`;
+  return `<button class="btn ghost sm" data-act="listen">Read it aloud</button>`;
+}
+function ttsUpdate(){ const el = document.getElementById('speakctl'); if(el) el.innerHTML = speakCtl(); }
+function ttsStop(){ S.ttsTok = (S.ttsTok||0) + 1; try { if(window.speechSynthesis) speechSynthesis.cancel(); } catch(e){} S.tts = 'idle'; ttsUpdate(); }
+const FILLERS = ['um','uh','erm','like','you know','basically','actually','sort of','kind of','i mean','literally'];
+function delivery(st){
+  const raw = st.raw || '', words = (raw.trim().match(/\S+/g)||[]).length, min = st.ms/60000;
+  const low = ' ' + raw.toLowerCase().replace(/[^a-z' ]+/g,' ').replace(/\s+/g,'  ') + ' ';
+  const fillers = {}; FILLERS.forEach(f => { const n = (low.match(new RegExp(' '+f.replace(' ','  ')+' ','g'))||[]).length; if(n) fillers[f] = n; });
+  return {words, ms:st.ms, wpm: min > 0.08 ? Math.round(words/min) : null, fillers, fillerTotal:Object.values(fillers).reduce((a,b)=>a+b,0), pauses: st.noPauses ? null : st.pauses};
+}
+const mmss = ms => { const x = Math.round((ms||0)/1000); return Math.floor(x/60)+':'+String(x%60).padStart(2,'0'); };
+
+/* ---------- views ---------- */
+function stepper(){
+  const order = ['setup','question','followup','feedback'];
+  const cur = (S.step === 'self' || S.step === 'scoring') ? 'feedback' : S.step === 'followup2' ? 'followup' : S.step, ci = order.indexOf(cur);
+  const names = {setup:'Setup', question:'Question', followup:'Follow-up', feedback:'Feedback'};
+  return `<ol class="steps" aria-label="Interview progress">${order.map((s,i)=>`<li ${i===ci?'data-on aria-current="step"':''} ${i<ci?'data-done':''}><b>${i+1}</b>${names[s]}</li>`).join('')}</ol>`;
+}
+const seg = (act, opts, val) => `<div class="seg" role="group">${opts.map(o=>`<button type="button" data-act="${act}" data-v="${esc(o)}" aria-pressed="${o===val}">${esc(o)}</button>`).join('')}</div>`;
+const pips = n => `<span class="pips" aria-label="${n==null?'not scored':n+' out of 5'}">${[1,2,3,4,5].map(i=>`<span class="pip ${n!=null&&i<=n?'on':''}"></span>`).join('')}</span>`;
+const busyView = () => `<div class="busy" role="status"><span class="dot"></span>${esc(S.busy)}</div>`;
+const dictBtn = t => { const on = (rec || S.timer) && recTarget===t, v = S.setup.voice, tm = S.micBlocked;
+  const label = on ? (tm ? 'Stop timer' : 'Stop') : tm ? 'Start answer timer' : v ? 'Start speaking' : 'Dictate';
+  return `<button type="button" class="btn ${v && !on ? 'pen' : 'ghost'}" data-act="dictate" data-t="${t}">${label}</button>${on ? `<span class="rec" role="status"><span class="recdot"></span>${tm ? 'Timing' : 'Recording'} <span id="rec-timer">0:00</span></span>` : ''}`; };
+const voiceActions = (t, submit) => S.setup.voice
+  ? `${dictBtn(t)}<button class="btn ghost" data-act="${submit[0]}">${submit[1]}</button>`
+  : `<button class="btn pen" data-act="${submit[0]}">${submit[1]}</button>${dictBtn(t)}`;
+const reqText = ids => (S.profile?.setup.requirements||[]).filter(r=>(ids||[]).includes(r.id)).map(r=>r.text);
+const focusSelect = () => { const R = S.profile?.setup.requirements || []; if(!R.length) return '';
+  return `<label class="row note">Next question on <select id="focus"><option value="">Least practiced requirement</option>${R.map(r=>`<option value="${esc(r.id)}" ${S.focus===r.id?'selected':''}>${esc(r.text)}</option>`).join('')}</select></label>`; };
+function meter(id, lo, hi){
+  const ta = document.getElementById(id), m = document.getElementById('meter-'+id); if(!ta || !m) return;
+  const upd = () => { const w = (ta.value.trim().match(/\S+/g)||[]).length, sec = Math.round(w/150*60);
+    const t = sec < 60 ? sec+' seconds' : Math.floor(sec/60)+' min '+(sec%60)+' s';
+    m.textContent = !w ? `Aim for ${lo} to ${hi} words.` : `${w} words, about ${t} spoken. ` + (w < lo ? `Aim for ${lo} to ${hi} words.` : w > hi ? 'Long for a spoken answer. Try trimming.' : 'Good length.'); };
+  ta.addEventListener('input', upd); upd();
+}
+function prevAttempt(c){
+  const root = c.retryOf; if(!root) return null;
+  return S.answers.filter(a=>a.id!==c.id && a.result && (a.id===root || a.retryOf===root) && a.createdAt < c.createdAt).sort((a,b)=>b.createdAt-a.createdAt)[0] || null;
+}
+
+function deleteBlock(){
+  if(S.confirmDelete) return `<div class="banner" style="margin-top:18px"><b>Delete everything?</b> This removes your resume, job description, answers, interview reports and calibration set from this app. It can't be undone.
+    <div class="actions" style="margin-top:10px"><button class="btn danger" data-act="delyes">Delete my data</button><button class="btn ghost" data-act="delno">Cancel</button></div></div>`;
+  return `<p class="note" style="margin-top:18px">Your data is saved only in this browser. <button class="link" data-act="delask">Delete my data</button></p>`;
+}
+async function deleteAll(){
+  S.confirmDelete = false;
+  await run('Deleting your data…', async () => {
+    await S.wq;
+    if(S.store){
+      const snap = await S.store.get();
+      for(const d of snap.docs){ try { await S.store.doc(d.id).delete(); } catch(e){} }
+    }
+    S.profile = null; S.answers = []; S.cal = []; S.reports = {}; S.cur = null; S.draft = {}; S.calOn = false;
+    S.rubric = {current:{version:'v1', anchors:JSON.parse(JSON.stringify(DEFAULT_ANCHORS))}, history:[]};
+    S.step = 'setup'; S.view = 'practice'; S.notice = 'Your data was deleted.';
+    track('delete');
+  });
+}
+function setupView(){
+  const p = S.profile;
+  if(p && !S.editSetup){
+    return `<div class="sheet">
+      <div class="eyebrow">Your practice interview</div>
+      <h2>${esc(p.setup.role || 'Your target role')}${p.setup.company ? ' at '+esc(p.setup.company) : ''}</h2>
+      <p class="note" style="margin:0">${esc(p.type)} questions, ${esc(p.level)} level, ${S.setup.voice ? 'spoken answers' : 'typed answers'}. ${S.answers.length} ${S.answers.length===1?'question':'questions'} answered so far.</p>
+      <div class="actions"><button class="btn pen" data-act="next" ${S.busy?'disabled':''}>Start next question</button><button class="btn ghost" data-act="editsetup">Change resume or job</button></div>
+      ${deleteBlock()}
+    </div>`;
+  }
+  const choice = (v, title, desc) => `<button type="button" class="choice" data-act="mode" data-v="${v}" aria-pressed="${(v==='voice')===!!S.setup.voice}"><b>${title}</b><span>${desc}</span></button>`;
+  return `<div class="sheet">
+    <h2>${p ? 'Change your resume or job' : 'Set up your practice interview'}</h2>
+    <p class="note" style="margin:0">The coach writes questions from your resume and the job you want. ${CONFIG.PROXY_URL ? "Your answers are saved only in this browser. What you type is sent to an AI model to write questions and feedback, so leave out anything sensitive, like your phone number or home address." : "Your answers are saved only in this browser, but what you send is processed by Google's free Gemini API, which may use it to improve its models. Leave out anything sensitive, like your phone number or home address."}</p>
+
+    <div class="grid2" style="margin-top:6px">
+      <div>
+        <div class="labelrow"><label class="f" for="resume">1. Your resume</label><label class="uplink">Upload PDF<input type="file" id="file" accept=".pdf,.txt,.md,application/pdf,text/plain" hidden></label></div>
+        <textarea id="resume" placeholder="Paste your resume text, or upload a PDF">${esc(S.draft.resume ?? p?.resume ?? '')}</textarea>
+        <span class="note" id="filenote"></span>
+      </div>
+      <div>
+        <div class="labelrow"><label class="f" for="jd">2. The job description</label></div>
+        <textarea id="jd" placeholder="Paste the full job posting">${esc(S.draft.jd ?? p?.jd ?? '')}</textarea>
+      </div>
+    </div>
+
+    <label class="f">3. How will you answer?</label>
+    <div class="choices">${choice('type','Type my answers','Write each answer in a text box.')}${choice('voice','Speak my answers','Questions are read aloud and you answer out loud. Adds pace and filler-word feedback. Chrome, Edge or Safari.')}</div>
+    ${S.setup.voice ? `<label class="check" style="margin-top:10px"><input type="checkbox" id="autoread" ${S.setup.autoRead?'checked':''}><span>Read each question aloud automatically <span class="note">(you can pause, stop or replay it)</span></span></label>` : ''}
+
+    <div class="optrow">
+      <div><label class="f">Question style</label>${seg('type',['Behavioral','Role-specific','Mixed'],S.setup.type)}</div>
+      <div><label class="f">Level</label>${seg('level',['Entry','Mid','Senior'],S.setup.level)}</div>
+    </div>
+    <details class="more"><summary>More options</summary>
+      <label class="check"><input type="checkbox" id="selfscore" ${S.setup.selfScore?'checked':''}><span><b>Score myself before seeing feedback</b><br><span class="note">Shows where the coach agrees with you, and where to trust it less.</span></span></label>
+    </details>
+
+    <div class="actions startbar">
+      <button class="btn pen" data-act="start" ${S.busy || !S.sample ? 'disabled':''}>${p ? 'Save and start' : 'Start interview'}</button>
+      ${p ? `<button class="btn ghost" data-act="canceledit">Cancel</button>` : `<span class="note">or</span><button class="link" data-act="sample" ${S.busy||!S.sample?'disabled':''}>try a sample interview, no resume needed</button>`}
+    </div>
+  </div>`;
+}
+
+function questionBlock(c, small){
+  const reqs = reqText(c.q.requirement_ids);
+  const sid = S.profile && S.profile.session, n = sid ? sessAnswers(sid).length + (c.result ? 0 : 1) : null;
+  return `<div class="qhead"><span class="eyebrow" style="margin:0">${n ? 'Question '+n : 'Question'}${c.attempt>1?`, attempt ${c.attempt}`:''}</span>${!small && S.setup.voice ? `<span class="speakctl" id="speakctl">${speakCtl()}</span>` : ''}</div>
+  <p class="q ${small?'small':''}">${esc(c.q.question)}</p>
+  ${!small && reqs.length ? `<p class="qfocus">Checks: ${reqs.map(esc).join('; ')}</p>` : ''}`;
+}
+
+function qRateHtml(c){
+  if((c.attempt||1) > 1) return '';
+  const r = c.qRating;
+  return `<div class="qrate note">${r ? (r==='up' ? 'Thanks. Marked as realistic.' : 'Thanks for the signal. Skip it if you want a different question.') : `Was this a realistic interview question? <button class="link" data-act="qrate" data-v="up">Yes</button> <span aria-hidden="true">/</span> <button class="link" data-act="qrate" data-v="down">Not really</button>`}</div>`;
+}
+function answerFoot(id, lo, hi){
+  return `${micHelp()}<p class="interim" id="interim-${id}" aria-live="polite"></p><p class="note" id="meter-${id}" style="margin:6px 0 0"></p>`;
+}
+function questionView(){
+  const c = S.cur;
+  return `<div class="sheet">${questionBlock(c)}
+    <label class="f" for="answer">Your answer</label>
+    <textarea id="answer" class="answer" placeholder="${S.setup.voice ? 'Press Start speaking and answer out loud. Your words appear here, and you can fix any mistakes before submitting.' : 'Type your answer as you would say it out loud.'}">${esc(S.draft.answer||'')}</textarea>
+    ${answerFoot('answer')}
+    <div class="actionbar"><div class="row">${voiceActions('answer',['answer','Submit answer'])}</div><button class="link" data-act="skip">Skip this question</button></div>
+    ${qRateHtml(c)}
+  </div>`;
+}
+
+function follow2View(){
+  const c = S.cur;
+  return `<div class="sheet">${questionBlock(c, true)}<div class="prior">${esc(c.answer)}
+
+Follow-up: ${esc(c.followup)}
+${esc(c.followAnswer)}</div>
+    <div class="qhead"><span class="eyebrow" style="margin:0">One more follow-up${c.againReason ? ': ' + esc(c.againReason) : ''}</span>${S.setup.voice ? `<span class="speakctl" id="speakctl">${speakCtl()}</span>` : ''}</div>
+    <p class="q">${esc(c.followup2)}</p>
+    <label class="f" for="follow2">Your answer</label>
+    <textarea id="follow2" class="answer" style="min-height:140px">${esc(S.draft.follow2||'')}</textarea>${answerFoot('follow2')}
+    <div class="actionbar"><div class="row">${voiceActions('follow2',['follow2','Submit answer'])}</div></div></div>`;
+}
+function followView(){
+  const c = S.cur;
+  return `<div class="sheet">${questionBlock(c, true)}<div class="prior">${esc(c.answer)}</div>
+    <div class="qhead"><span class="eyebrow" style="margin:0">Follow-up${c.probing ? ': ' + esc(c.probing) : ''}</span>${S.setup.voice ? `<span class="speakctl" id="speakctl">${speakCtl()}</span>` : ''}</div>
+    <p class="q">${esc(c.followup)}</p>
+    <label class="f" for="follow">Your follow-up answer</label>
+    <textarea id="follow" class="answer" style="min-height:140px">${esc(S.draft.follow||'')}</textarea>${answerFoot('follow')}
+    <div class="actionbar"><div class="row">${voiceActions('follow',['follow','Submit follow-up'])}</div></div></div>`;
+}
+
+function selfView(){
+  const c = S.cur;
+  return `<div class="sheet"><h2>Score yourself first</h2><p class="note" style="margin-top:0">Pick what you think you earned. You'll see how closely the coach agrees.</p>
+    ${DIMS.map(d=>`<div class="selfrow"><b>${d.name}</b>${seg('self-'+d.k,['1','2','3','4','5'],c.self[d.k]!=null?String(c.self[d.k]):null)}<div class="anchor">1: ${esc(d.a[0])}. 3: ${esc(d.a[1])}. 5: ${esc(d.a[2])}.</div></div>`).join('')}
+    <div class="actions"><button class="btn pen" data-act="score">See feedback</button><button class="btn ghost" data-act="skipself">Skip self-score</button></div></div>`;
+}
+
+function marked(text, which, scores){
+  const marks = DIMS.map(d=>({d:d.k, sp:scores[d.k]?.span})).filter(m=>m.sp && m.sp.w===which).map(m=>({s:m.sp.s,e:m.sp.e,d:m.d})).sort((a,b)=>a.s-b.s);
+  let out = '', i = 0;
+  for(const m of marks){ if(m.s < i) continue; out += esc(text.slice(i,m.s)) + `<mark class="hl hl-${m.d}" title="${DIMNAME[m.d]}">${esc(text.slice(m.s,m.e))}</mark>`; i = m.e; }
+  return out + esc(text.slice(i));
+}
+const NAME_STOP = new Set("At In On The We My After When Then So But And As This That Our By For With To From Because While Over Once First Next Finally It If An Since During Within Before Later Today Now Once Every Each Both Most Some Monday Tuesday Wednesday Thursday Friday January February March April May June July August September October November December Q1 Q2 Q3 Q4".split(' '));
+function nameFlags(rewrite, source){
+  const clean = (rewrite || '').replace(/\[[^\]]*\]/g, ' '), src = source.toLowerCase(), out = new Set();
+  for(const sent of clean.split(/(?<=[.!?:;])\s+|\n+/)){
+    const toks = sent.match(/[A-Za-z][A-Za-z0-9&+'-]*/g) || [];
+    toks.slice(1).forEach(t => { t = t.replace(/['-]+$/, '').replace(/'s$/, '');
+      if(t.length < 2 || !/^[A-Z]/.test(t) || NAME_STOP.has(t)) return;
+      if(!src.includes(t.toLowerCase())) out.add(t); });
+  }
+  return [...out].slice(0, 8);
+}
+function labelParts(h){ return h.replace(/(^|\n)\s*(Situation|Task|Action|Result|Clarify|Approach|Tradeoffs|Measure|Why the role|Why me|Why now):/g, '$1<b class="rwlabel">$2:</b>'); }
+function rewriteHtml(r, flags, names){
+  let h = esc(r).replace(/\[([^\]]+)\]/g, '<span class="gap">[$1]</span>');
+  for(const n of (names || [])) h = h.replace(new RegExp('\\b' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b(?![^<]*>)', 'g'), `<span class="flag" title="Not found in your answer or resume">${n}</span>`);
+  for(const n of flags) h = h.replace(new RegExp('(?<![\\d.])'+n.replace(/\./g,'\\.')+'(?![\\d])','g'), `<span class="flag" title="Not found in your answer or resume">${n}</span>`);
+  return h;
+}
+
+function deliveryHtml(c){
+  const D = c.delivery; if(!D || (!D.answer && !D.follow)) return '';
+  const part = (lbl, d) => { if(!d) return '';
+    const note = d.wpm==null ? 'Too short to measure' : d.wpm < 115 ? 'A bit slow' : d.wpm > 170 ? 'Fast. Slow down a little' : 'Comfortable pace';
+    const fl = Object.entries(d.fillers).map(([k,n])=>`"${k}" ${n}×`).join(', ');
+    return `<div class="metric dcard"><div class="k">${lbl}</div><div class="drow">
+      <span><b>${d.wpm==null?'–':d.wpm+' wpm'}</b><br><span class="note">${note}</span></span>
+      <span><b>${d.fillerTotal}</b> filler words<br><span class="note">${esc(fl) || 'None caught'}</span></span>
+      <span><b>${d.pauses==null?'–':d.pauses}</b> long pauses<br><span class="note">${d.pauses==null?'Not measured with device dictation':'Gaps over 3 seconds'}</span></span>
+      <span><b>${mmss(d.ms)}</b><br><span class="note">Speaking time</span></span></div></div>`; };
+  return `<div style="margin-top:26px"><h3>Delivery</h3><p class="note" style="margin:0 0 10px">Measured from your voice and kept separate from the rubric score. Counts are approximate: speech recognition often drops "um" and "uh," and "like" can be a real word.</p>${part('Main answer', D.answer)}${part('Follow-up', D.follow)}${part('Second follow-up', D.follow2)}</div>`;
+}
+function nudgeHtml(){
+  const sid = S.profile && S.profile.session; if(!sid || (S.nudgeOff && S.nudgeOff[sid])) return '';
+  const n = sessAnswers(sid).length; if(n < 5) return '';
+  return `<div class="banner nudge"><span>You've answered ${n} questions, about the length of a real interview. Want to see how it went overall?</span><span class="row"><button class="btn pen sm" data-act="finish">See my interview report</button><button class="btn ghost sm" data-act="nudgeno">Keep practicing</button></span></div>`;
+}
+function feedbackView(){
+  const c = S.cur, r = c.result, sc = r.scores;
+  const vals = DIMS.map(d=>sc[d.k].score).filter(v=>v!=null);
+  const selfDims = DIMS.filter(d=>c.self && c.self[d.k]!=null && sc[d.k].score!=null);
+  const agree = selfDims.filter(d=>Math.abs(c.self[d.k]-sc[d.k].score)<=1).length;
+  const unver = DIMS.filter(d=>sc[d.k].verified===false).length;
+  const prev = prevAttempt(c), pavg = prev ? avg(DIMS.map(d=>prev.result.scores[d.k].score).filter(v=>v!=null)) : null, cavg = avg(vals);
+  const dt = k => { if(!prev) return ''; const a = sc[k].score, b = prev.result.scores[k]?.score; if(a==null || b==null) return '';
+    const d = a - b; return `<span class="delta ${d>0?'up':d<0?'down':''}" title="Change from your last attempt">${d>0?'+'+d:d===0?'same':d}</span>`; };
+  const fl = [...(r.flags||[]), ...(r.nameFlags||[])];
+  return `
+  <div class="sheet">
+    <div class="eyebrow">Question${c.attempt>1?`, attempt ${c.attempt}`:''}</div>
+    <p class="q small" style="margin-bottom:16px">${esc(c.q.question)}</p>
+    <div class="summary">
+      <div><div class="big">${fmt(cavg)}<small> / 5</small></div>
+        ${prev && pavg!=null && cavg!=null ? `<div class="delta-line ${cavg>pavg?'up':cavg<pavg?'down':''}">${cavg>pavg?'Up':cavg<pavg?'Down':'No change'} ${cavg!==pavg?fmt(Math.abs(cavg-pavg))+' ':''}from last attempt</div>` : ''}
+        ${selfDims.length ? `<div class="note">You and the coach agreed on ${agree} of ${selfDims.length}</div>` : ''}</div>
+      <div class="fixbox"><div class="sum-label">Change this first</div>${esc(r.fix)}</div>
+      <div><div class="sum-label">Working well</div>${esc(r.strength)}</div>
+    </div>
+  </div>
+  ${nudgeHtml()}
+  <div class="sheet sec">
+    <div class="fb">
+      <div><h3>Scorecard</h3>
+        ${unver ? `<p class="warnline">${unver} ${unver===1?'score quotes':'scores quote'} words that aren't in your answer. Trust ${unver===1?'it':'them'} less.</p>` : ''}
+        ${DIMS.map(d=>{const s = sc[d.k]; const self = c.self && c.self[d.k]; const disp = c.disputes && c.disputes[d.k];
+          return `<div class="dim"><div class="dimhead"><span class="dimname"><span class="swatch hl-${d.k}"></span>${d.name}</span><span class="row" style="gap:8px">${dt(d.k)}${s.score==null?'<span class="note">Not applicable</span>':pips(s.score)}</span></div>
+          <div class="dimbody">${esc(s.reason)}</div>
+          <div class="meta">
+            ${s.verified===true?'<span class="good">✓ Quote found</span>':s.verified===false?'<span class="bad">Quote not found</span>':'<span>Scored on what is missing</span>'}
+            <span>${esc(s.confidence||'unknown')} confidence</span>
+            ${self!=null&&self!==undefined?`<span>You gave ${self}</span>`:''}
+            ${disp?`<span>You disagreed</span>`:`<button class="link" data-act="disagree" data-d="${d.k}">Disagree</button>`}
+          </div>
+          ${S.disputeOpen===d.k?`<div class="dispute"><input id="disp-${d.k}" placeholder="What did it get wrong?" aria-label="What the ${d.name} score got wrong"><button class="btn ghost sm" data-act="savedisp" data-d="${d.k}">Save</button></div>`:''}
+          </div>`;}).join('')}
+      </div>
+      <div><h3>Your answer</h3>
+        <p class="note" style="margin:0 0 8px">Highlights show the words each score is based on, in that score's color.</p>
+        <div class="answertext">${marked(c.answer,'a',sc)}<span class="lbl">Follow-up: ${esc(c.followup)}</span>${marked(c.followAnswer,'b',sc)}${c.followAnswer2 ? `<span class="lbl">Second follow-up: ${esc(c.followup2)}</span>${marked(c.followAnswer2,'c',sc)}` : ''}</div>
+      </div>
+    </div>
+  </div>
+  <div class="sheet sec">
+    <div class="spread"><h3 style="margin:0">Stronger answers${r.structure ? ` <span class="chip" style="vertical-align:middle">${esc(r.structure)} structure</span>` : ''}</h3><button class="btn ghost sm" data-act="copy">Copy all</button></div>
+    <p class="note" style="margin:4px 0 0">One for each question you were asked, built only from what you said and your resume. Dashed boxes are details for you to fill in.</p>
+    ${(r.rewrites && r.rewrites.length) ? r.rewrites.map(x => { const q = x.part === 'followup2' ? c.followup2 : x.part === 'followup' ? c.followup : c.q.question;
+        const lbl = x.part === 'followup2' ? 'Second follow-up' : x.part === 'followup' ? 'Follow-up' : 'Main question';
+        return `<div class="rwblock"><div class="eyebrow">${lbl}</div><p class="rwq">${esc(q || '')}</p><div class="rewrite">${labelParts(rewriteHtml(x.text, r.flags, r.nameFlags))}</div></div>`; }).join('')
+      : `<div class="rewrite">${labelParts(rewriteHtml(r.rewrite, r.flags, r.nameFlags))}</div>`}
+    ${fl.length ? `<p class="warnline" style="margin-top:12px">Not in your answer or resume: ${fl.map(esc).join(', ')}. Only keep them if they're true.</p>` : ''}
+  </div>
+  ${deliveryHtml(c) ? `<div class="sheet sec">${deliveryHtml(c).replace('<div style="margin-top:26px">','<div>')}</div>` : ''}
+  <div class="actionbar"><div class="row"><button class="btn pen" data-act="next">Next question</button><button class="btn ghost" data-act="retry">Retry this question</button></div><button class="link" data-act="finish">Finish interview and see report</button></div>`;
+}
+
+function progressView(){
+  const A = S.answers.filter(a=>a.result);
+  if(!A.length) return `<div class="sheet"><h2>Progress</h2><p>Answer your first question to see your scores, weak spots, and which parts of the role you've covered.</p><button class="btn pen" data-act="gopractice">Start practicing</button></div>`;
+  const allS = A.flatMap(a=>DIMS.map(d=>a.result.scores[d.k]).filter(s=>s && s.evidence));
+  const verRate = allS.length ? allS.filter(s=>s.verified).length/allS.length : null;
+  let sp=0, ag=0; A.forEach(a=>DIMS.forEach(d=>{const s=a.self&&a.self[d.k], ai=a.result.scores[d.k].score; if(s!=null&&ai!=null){sp++; if(Math.abs(s-ai)<=1) ag++;}}));
+  const disputes = A.reduce((n,a)=>n+Object.keys(a.disputes||{}).length,0);
+  const flagged = A.filter(a=>(a.result.flags||[]).length || (a.result.nameFlags||[]).length).length;
+  const dAvg = DIMS.map(d=>({d, v:avg(A.map(a=>a.result.scores[d.k].score).filter(v=>v!=null))}));
+  const lowest = {}; A.forEach(a=>{let m=null; DIMS.forEach(d=>{const v=a.result.scores[d.k].score; if(v!=null&&(m==null||v<a.result.scores[m].score)) m=d.k;}); if(m) lowest[m]=(lowest[m]||0)+1;});
+  const weak = Object.entries(lowest).sort((a,b)=>b[1]-a[1])[0];
+  const reqs = S.profile ? S.profile.setup.requirements : [];
+  const sorted = [...A].sort((a,b)=>b.createdAt-a.createdAt);
+  const pct = x => x==null ? '–' : Math.round(x*100)+'%';
+  const V = A.filter(a=>a.delivery && a.delivery.answer);
+  const vline = V.length ? `<div class="sheet" style="margin-bottom:18px"><h3>Delivery</h3><p style="margin:0">Across ${V.length} spoken ${V.length===1?'answer':'answers'}: average pace ${Math.round(avg(V.map(a=>a.delivery.answer.wpm).filter(x=>x!=null))||0)} words per minute, ${fmt(avg(V.map(a=>a.delivery.answer.fillerTotal)))} filler words and ${fmt(avg(V.map(a=>a.delivery.answer.pauses).filter(x=>x!=null)))} long pauses per answer.</p></div>` : '';
+  return `<div class="metrics">
+    <div class="metric"><div class="v">${pct(verRate)}</div><div class="k">Scores whose quote was found in your answer</div></div>
+    <div class="metric"><div class="v">${sp?pct(ag/sp):'–'}</div><div class="k">Coach agreed with your self-score within 1 point</div></div>
+    <div class="metric"><div class="v">${disputes}</div><div class="k">Scores you disagreed with</div></div>
+    <div class="metric"><div class="v">${flagged}</div><div class="k">Stronger versions with unverified details</div></div>
+  </div>
+  ${vline}
+  <div class="grid2">
+    <div class="sheet"><h3>Average by dimension</h3>
+      ${dAvg.map(x=>`<div class="bar"><span>${x.d.name}</span><span class="track"><span class="fill" style="width:${x.v==null?0:x.v/5*100}%;display:block"></span></span><b>${fmt(x.v)}</b></div>`).join('')}
+      ${weak?`<p style="margin:12px 0 0"><b>Recurring weak spot:</b> ${DIMNAME[weak[0]]} was your lowest score in ${weak[1]} of ${A.length} answers.</p>`:''}
+    </div>
+    <div class="sheet"><h3>Role requirements covered</h3>
+      <ul class="list">${reqs.map(r=>{const hits=A.filter(a=>(a.q.requirement_ids||[]).includes(r.id)); const best=hits.length?Math.max(...hits.map(a=>avg(DIMS.map(d=>a.result.scores[d.k].score).filter(v=>v!=null))||0)):null;
+        return `<li><span>${esc(r.text)}<div class="sub">${hits.length?`${hits.length} ${hits.length===1?'answer':'answers'}`:'No answer yet'}</div></span><b>${best==null?'–':fmt(best)}</b></li>`;}).join('')}</ul>
+    </div>
+  </div>
+  <div class="sheet" style="margin-top:18px"><h3>Interviews</h3>
+    <ul class="list">${[...new Set(sorted.map(a=>a.session||'earlier'))].map(sid=>{ const L = sessAnswers(sid), cur = S.profile && sid === S.profile.session;
+      return `<li><span>${new Date(L[0].createdAt).toLocaleDateString()}${cur?' (in progress)':''}<div class="sub">${L.length} ${L.length===1?'question':'questions'}</div></span><span class="row"><b>${fmt(avg(L.map(ansAvg).filter(v=>v!=null)))}</b>${cur?`<button class="btn ghost sm" data-act="finish">Finish and see report</button>`:`<button class="btn ghost sm" data-act="openreport" data-s="${esc(sid)}">See report</button>`}</span></li>`; }).join('')}</ul>
+  </div>
+  <div class="sheet" style="margin-top:18px"><h3>Answer history</h3>
+    <ul class="list">${sorted.map(a=>`<li><span>${esc(a.q.question)}<div class="sub">${new Date(a.createdAt).toLocaleDateString()}${a.attempt>1?`, attempt ${a.attempt}`:''}</div></span><b>${fmt(avg(DIMS.map(d=>a.result.scores[d.k].score).filter(v=>v!=null)))}</b></li>`).join('')}</ul>
+  </div>`;
+}
+
+function aboutView(){
+  return `<div class="sheet prose">
+    <h2>How scoring works</h2>
+    <p>An interview answer has no single right version, so "is this feedback correct?" is the hard part of an interview coach. This one is built so you can check its work instead of taking it on trust.</p>
+    <h3>The rubric</h3>
+    <div class="tablewrap"><table><thead><tr><th>Dimension</th><th>1</th><th>3</th><th>5</th></tr></thead><tbody>
+    ${DIMS.map(d=>`<tr><td><span class="dimname"><span class="swatch hl-${d.k}"></span>${d.name}</span></td>${d.a.map(x=>`<td>${esc(x)}</td>`).join('')}</tr>`).join('')}
+    </tbody></table></div>
+    <p class="note">Impact can be marked not applicable, for example on a "why this company?" question.</p>
+    <h3>Every score shows its evidence</h3>
+    <p>For each score, the coach must quote the words from your answer that earned it. The page then searches your answer for that quote. If it isn't there, the score is marked "Quote not found" so you know to trust it less. Found quotes are highlighted in your answer in the dimension's color.</p>
+    <h3>The stronger version can't invent achievements</h3>
+    <p>Rewrites may only use what you said and what's on your resume. Missing details appear as placeholders you fill in. The page also checks every number and every capitalized name or tool in the rewrite against your answer and resume, and flags any it can't find.</p>
+    <p><b>What it can't catch yet:</b> an invented outcome written in plain words, like "the team loved it." Read the stronger version before you use it, and only keep what's true.</p>
+    <h3>You can grade the grader</h3>
+    <p>Score yourself before seeing feedback, and disagree with any score. Progress shows how often the coach's quotes check out, how often it agrees with you, and how often you pushed back.</p>
+    <h3>Voice is measured separately</h3>
+    <p>In voice mode the coach reads questions aloud and transcribes your answer. You can fix the transcript before it's scored, so a transcription mistake never lowers your content scores. Pace, filler words, and long pauses are reported in their own Delivery section and never change the rubric score.</p>
+    <h3>Practice only</h3>
+    <p>This coach is for preparing before an interview. It doesn't listen in or feed you answers during a real one.</p>
+    <p class="note"><button class="link" data-act="calon">Open calibration mode</button> to test the coach against human scores.</p>
+    <h3>Your data</h3>
+    <p>Your resume, answers and reports are private to you, and you can delete them from the Practice tab at any time. To improve the coach, the app also records anonymous usage counts, like how many questions were answered and which scores were disputed. These never include your resume or answer text.</p>
+  </div>`;
+}
+
+/* ---------- calibration ---------- */
+const calSave = it => persist(it.id, {kind:'cal', ...it});
+const newId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+function addCal(list){
+  let n = 0;
+  for(const x of list){ if(!x.question || !x.answer) continue;
+    const it = {id:newId(), question:x.question.trim(), answer:x.answer.trim(), followup:(x.followup||'').trim(), followAnswer:(x.followAnswer||'').trim(), human:{r1:{}, r2:{}}, runs:{}, createdAt:Date.now()+n, srcId:x.srcId||null};
+    S.cal.push(it); calSave(it); n++; }
+  return n;
+}
+function parseBulk(text){
+  return text.split(/^\s*-{3,}\s*$/m).map(b => {
+    const o = {}; let key = null;
+    for(const line of b.split('\n')){
+      const m = line.match(/^\s*(Q|A|F|FA)\s*:\s*(.*)$/i);
+      if(m){ key = {q:'question', a:'answer', f:'followup', fa:'followAnswer'}[m[1].toLowerCase()]; o[key] = m[2]; }
+      else if(key) o[key] += '\n' + line;
+    }
+    return o;
+  }).filter(o => o.question && o.answer);
+}
+function calStats(ver){
+  const per = {}, pool = {n:0, exact:0, w1:0, gap:0, bias:0}, hh = {n:0, w1:0};
+  let ev = 0, evOk = 0;
+  for(const d of DIMS){
+    const x = {n:0, exact:0, w1:0, gap:0, bias:0, hn:0, hw1:0};
+    for(const it of S.cal){
+      const r = it.runs && it.runs[ver] && it.runs[ver].scores[d.k], h = it.human.r1[d.k], h2 = it.human.r2[d.k];
+      if(r && r.evidence){ ev++; if(r.verified) evOk++; }
+      if(r && r.score!=null && h!=null && h!=='na'){ const g = r.score - h; x.n++; x.exact += g===0; x.w1 += Math.abs(g)<=1; x.gap += Math.abs(g); x.bias += g; }
+      if(h!=null && h2!=null && h!=='na' && h2!=='na'){ x.hn++; x.hw1 += Math.abs(h-h2)<=1; }
+    }
+    per[d.k] = x; ['n','exact','w1','gap','bias'].forEach(k=>pool[k]+=x[k]); hh.n += x.hn; hh.w1 += x.hw1;
+  }
+  return {per, pool, hh, ev, evOk};
+}
+async function runCal(mode){
+  const base = rubricNow().version, ver = mode === 'repeat' ? base + '#2' : base;
+  const todo = S.cal.filter(it => mode === 'repeat' ? (it.runs && it.runs[base] && !it.runs[ver]) : !(it.runs && it.runs[ver]));
+  if(!todo.length){ S.error = mode === 'repeat' ? (S.cal.some(it => it.runs && it.runs[base]) ? `Every answer has already been scored twice on rubric ${base}.` : 'Run the coach once first, then check consistency.') : `Every answer already has coach scores for rubric ${ver}. Edit the rubric and save a new version to compare.`; return render(); }
+  S.calRun = {done:0, total:todo.length, stop:false, failed:0}; render();
+  for(const it of todo){
+    if(S.calRun.stop) break;
+    try {
+      const r = await ask(calPrompt(it), 'default');
+      if(r && r.scores){ it.runs = {...(it.runs||{}), [ver]: {scores: verify(it, r.scores), at:Date.now()}}; calSave(it); }
+      else S.calRun.failed++;
+    } catch(e){ S.calRun.failed++; if(/usage limit|turned off|isn't available|expired/i.test(e.message)){ S.error = e.message; break; } }
+    S.calRun.done++; render();
+  }
+  const f = S.calRun.failed; S.calRun = null;
+  if(f) S.error = S.error || `${f} ${f===1?'answer':'answers'} couldn't be scored. Run again to retry them.`;
+  render();
+}
+function csvCell(v){ const t = v==null ? '' : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g,'""') + '"' : t; }
+function calCsv(){
+  const vers = [...new Set(S.cal.flatMap(it => Object.keys(it.runs||{})))];
+  const head = ['id','question','answer','followup','followup_answer'];
+  DIMS.forEach(d => head.push('human1_'+d.k, 'human2_'+d.k));
+  vers.forEach(v => DIMS.forEach(d => head.push(`coach_${v}_${d.k}`, `coach_${v}_${d.k}_evidence`, `coach_${v}_${d.k}_quote_found`, `coach_${v}_${d.k}_confidence`)));
+  const rows = S.cal.map(it => { const r = [it.id, it.question, it.answer, it.followup, it.followAnswer];
+    DIMS.forEach(d => r.push(it.human.r1[d.k] ?? '', it.human.r2[d.k] ?? ''));
+    vers.forEach(v => DIMS.forEach(d => { const x = it.runs && it.runs[v] && it.runs[v].scores[d.k]; r.push(x ? (x.score ?? 'na') : '', x ? x.evidence : '', x ? (x.verified===true?'yes':x.verified===false?'no':'') : '', x ? x.confidence : ''); }));
+    return r; });
+  return [head, ...rows].map(r => r.map(csvCell).join(',')).join('\n');
+}
+async function exportCsv(btn){
+  const csv = calCsv();
+  if(S.dl){ try { await S.dl.save({filename:'interview-coach-calibration.csv', data:csv}); return; } catch(e){ if(e && e.code==='declined') return; } }
+  try { await navigator.clipboard.writeText(csv); btn.textContent = 'Copied as CSV. Paste into a spreadsheet'; }
+  catch(e){ S.csvText = csv; render(); }
+}
+function calView(){
+  const ver = rubricNow().version, vers = [...new Set(S.cal.flatMap(it => Object.keys(it.runs||{})))].filter(v => !v.includes('#'));
+  const consTable = v => { let n = 0, ex = 0, w = 0; const rows = DIMS.map(d => { let a = 0, e = 0, w1 = 0;
+      S.cal.forEach(it => { const r1 = it.runs && it.runs[v] && it.runs[v].scores[d.k], r2 = it.runs && it.runs[v+'#2'] && it.runs[v+'#2'].scores[d.k];
+        if(r1 && r2 && r1.score != null && r2.score != null){ a++; e += r1.score === r2.score; w1 += Math.abs(r1.score - r2.score) <= 1; } });
+      n += a; ex += e; w += w1; return `<tr><td>${d.name}</td><td>${a}</td><td>${pct(e,a)}</td><td>${pct(w1,a)}</td></tr>`; }).join('');
+    if(!n) return '';
+    return `<h3 style="margin-top:14px">Consistency on ${esc(v)}: the same answer, scored twice</h3><div class="tablewrap"><table><thead><tr><th>Dimension</th><th>Pairs</th><th>Same score both times</th><th>Within 1 point</th></tr></thead><tbody>${rows}<tr><td><b>All</b></td><td>${n}</td><td>${pct(ex,n)}</td><td>${pct(w,n)}</td></tr></tbody></table></div><p class="note" style="margin-top:8px">If the coach often changes its own score, users can't trust any single score, even when average agreement looks good.</p>`; };
+  const hum = S.cal.filter(it => DIMS.some(d => it.human.r1[d.k]!=null)).length;
+  const pct = (a,b) => b ? Math.round(a/b*100)+'%' : '–';
+  const statsTable = v => { const st = calStats(v);
+    if(!st.pool.n) return `<p class="note">No answers have both your scores and coach scores for ${esc(v)} yet.</p>`;
+    const row = (name, x) => `<tr><td>${name}</td><td>${x.n}</td><td>${pct(x.exact,x.n)}</td><td>${pct(x.w1,x.n)}</td><td>${x.n?fmt(x.gap/x.n):'–'}</td><td>${x.n?(x.bias/x.n>0?'+':'')+fmt(x.bias/x.n):'–'}</td>${S.r2?`<td>${pct(x.hw1,x.hn)}</td>`:''}</tr>`;
+    return `<div class="tablewrap"><table><thead><tr><th>Dimension</th><th>Pairs</th><th>Exact match</th><th>Within 1 point</th><th>Average gap</th><th>Coach bias</th>${S.r2?'<th>Human vs human, within 1</th>':''}</tr></thead><tbody>
+      ${DIMS.map(d=>row(d.name, st.per[d.k])).join('')}${row('<b>All</b>', {...st.pool, hn:st.hh.n, hw1:st.hh.w1})}</tbody></table></div>
+      <p class="note" style="margin-top:8px">Quotes found in the answer: ${pct(st.evOk, st.ev)}. Coach bias above 0 means the coach scores higher than you.</p>`; };
+  const scoreSeg = (it, r, d) => { const v = it.human[r][d.k], opts = d.k==='impact' ? ['1','2','3','4','5','na'] : ['1','2','3','4','5'];
+    return `<div class="seg" role="group" aria-label="${r==='r1'?'Your':'Second rater'} ${d.name} score">${opts.map(o=>`<button type="button" data-act="calh" data-i="${it.id}" data-r="${r}" data-d="${d.k}" data-v="${o}" aria-pressed="${String(v)===o}">${o==='na'?'N/A':o}</button>`).join('')}</div>`; };
+  const items = S.cal.map((it, n) => { const run = it.runs && it.runs[ver];
+    return `<div class="sheet calitem"><div class="spread"><b>${n+1}. ${esc(it.question)}</b><button class="link" data-act="caldel" data-i="${it.id}">Remove</button></div>
+      <div class="prior" style="margin:8px 0 12px">${esc(it.answer)}${it.followAnswer?`\n\nFollow-up: ${esc(it.followup)}\n${esc(it.followAnswer)}`:''}</div>
+      ${DIMS.map(d=>{ const r = run && run.scores[d.k];
+        return `<div class="calrow"><span class="dimname"><span class="swatch hl-${d.k}"></span>${d.name}</span><span class="row">${scoreSeg(it,'r1',d)}${S.r2?scoreSeg(it,'r2',d):''}</span>
+        <span class="note">${!run ? 'Coach: not run' : S.blind ? 'Coach: hidden' : `Coach: <b>${r.score==null?'N/A':r.score}</b>${r.verified===false?' <span class="bad">quote not found</span>':''}`}</span></div>`; }).join('')}
+    </div>`; }).join('');
+  return `<div class="sheet prose" style="max-width:none">
+    <h2>Calibration mode</h2>
+    <p>Test whether the coach scores like a person would. Score each answer yourself, ideally with a second person, then run the coach and compare. If the coach agrees with you about as often as two people agree with each other, its scores are as reliable as a second human rater.</p>
+    <div class="metrics" style="margin:14px 0 0">
+      <div class="metric"><div class="v">${S.cal.length}</div><div class="k">Answers in the test set (aim for 30)</div></div>
+      <div class="metric"><div class="v">${hum}</div><div class="k">Scored by you</div></div>
+      <div class="metric"><div class="v">${esc(ver)}</div><div class="k">Current rubric version</div></div>
+      <div class="metric"><div class="v">${S.cal.filter(it=>it.runs&&it.runs[ver]).length}</div><div class="k">Scored by the coach on ${esc(ver)}</div></div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:18px">
+    <div class="sheet"><h3>Add answers</h3>
+      <p class="note" style="margin-top:0">Paste many at once. Separate answers with a line of three dashes. Use Q: for the question and A: for the answer, plus optional F: and FA: for a follow-up.</p>
+      <textarea id="calbulk" data-keep placeholder="Q: Tell me about a time you disagreed with an engineer.&#10;A: On my last project...&#10;---&#10;Q: Why do you want this role?&#10;A: ...">${esc(S.draft.calbulk||'')}</textarea>
+      <div class="actions"><button class="btn pen" data-act="caladd">Add to test set</button>${S.answers.length?`<button class="btn ghost" data-act="calimport">Import my practice answers</button>`:''}</div>
+    </div>
+    <div class="sheet"><h3>Rubric</h3>
+      <p class="note" style="margin-top:0">Change an anchor, save it as a new version, then run the coach again to see whether agreement improves. Saved rubrics are also used for practice scoring.</p>
+      ${(() => { const cnt = {}; S.answers.forEach(a => Object.keys(a.disputes||{}).forEach(k => cnt[k] = (cnt[k]||0) + 1)); const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+        return top ? `<p class="banner" style="margin:0 0 10px">Most disputed in your practice: <b>${DIMNAME[top[0]]}</b> (${top[1]} ${top[1]===1?'time':'times'}). Start by revisiting that anchor.</p>` : ''; })()}
+      <details><summary>Edit anchors for ${esc(ver)}</summary>
+        ${DIMS.map(d=>`<div style="margin-top:12px"><b>${d.name}</b>${[0,1,2].map(i=>`<label class="mini">${['1','3','5'][i]}<input id="anc-${d.k}-${i}" data-keep value="${esc(S.draft['anc-'+d.k+'-'+i] ?? rubricNow().anchors[d.k][i])}"></label>`).join('')}</div>`).join('')}
+        <label class="mini" style="margin-top:12px">New version name<input id="ancver" data-keep value="${esc(S.draft.ancver ?? ('v'+(S.rubric.history.length+2)))}"></label>
+        <div class="actions"><button class="btn" data-act="ancsave">Save as new version</button>${S.rubric.history.length?`<button class="btn ghost" data-act="ancreset">Back to the original rubric</button>`:''}</div>
+      </details>
+    </div>
+  </div>
+  <div class="sheet" style="margin-top:18px"><div class="spread"><h3 style="margin:0">Score the test set</h3>
+    <div class="row">
+      <label class="row note"><input type="checkbox" id="calblind" ${S.blind?'checked':''}> Hide coach scores while I score</label>
+      <label class="row note"><input type="checkbox" id="calr2" ${S.r2?'checked':''}> Add a second rater</label>
+    </div></div>
+    <p class="note">${S.r2?'Each row has your scores first, then the second rater\'s. ':''}Keep coach scores hidden until you've finished, so they don't sway you.</p>
+  </div>
+  ${items || '<p class="note" style="margin:16px 4px">Add answers above to start.</p>'}
+  <div class="sheet" style="margin-top:18px">
+    <div class="spread"><h3 style="margin:0">Results</h3><div class="row">
+      ${S.calRun ? `<span class="busy" style="padding:0"><span class="dot"></span>Scoring ${S.calRun.done} of ${S.calRun.total}…</span><button class="btn ghost" data-act="calstop">Stop</button>` : `<button class="btn pen" data-act="calrun" ${!S.cal.length||!S.sample?'disabled':''}>Run coach on rubric ${esc(ver)}</button><button class="btn ghost" data-act="calrepeat" ${!S.cal.length||!S.sample?'disabled':''}>Check consistency</button>`}
+      <button class="btn ghost" data-act="calcsv" ${!S.cal.length?'disabled':''}>Export CSV</button></div></div>
+    ${S.csvText?`<p class="note">Copy this into a spreadsheet:</p><textarea readonly style="min-height:120px">${esc(S.csvText)}</textarea>`:''}
+    ${vers.length ? [...vers].reverse().map(v=>`<h3 style="margin-top:18px">Rubric ${esc(v)}</h3>${statsTable(v)}${consTable(v)}`).join('') : '<p class="note">Run the coach to see agreement numbers.</p>'}
+  </div>`;
+}
+
+/* ---------- interview report ---------- */
+S.reports = {};
+const sessAnswers = sid => S.answers.filter(a => a.result && (a.session || 'earlier') === sid).sort((a,b)=>a.createdAt-b.createdAt);
+const ansAvg = a => avg(DIMS.map(d=>a.result.scores[d.k].score).filter(v=>v!=null));
+function reportPrompt(list){
+  return `You are an interview coach writing a short end-of-interview report for a candidate practicing for ${S.profile?.setup.role || 'a role'}${S.profile?.setup.company ? ' at '+S.profile.setup.company : ''}.
+
+Here is every answer in this interview, with rubric scores (1 to 5) and notes:
+${list.map((a,i)=>`Answer ${i+1}. Question: "${a.q.question}"
+Scores: ${DIMS.map(d=>`${d.k} ${a.result.scores[d.k].score ?? 'n/a'}`).join(', ')}
+Strength: ${a.result.strength}
+Main fix: ${a.result.fix}`).join('\n\n')}
+
+Write the report. Look for patterns across answers, not one-off issues. Be specific, honest and encouraging. Refer to answers by number.
+
+Reply with only JSON:
+{"headline":"one sentence overall verdict","strengths":["up to 2 short sentences"],"priorities":[{"title":"short name of what to work on","detail":"one or two sentences on what to change, citing answer numbers","answers":[1]}]}
+Give 2 or 3 priorities, most important first.`;
+}
+async function finishInterview(){
+  const sid = S.profile?.session || 'earlier';
+  const list = sessAnswers(sid);
+  if(!list.length){ S.error = 'Answer at least one question before finishing the interview.'; return render(); }
+  S.reportSid = sid; S.view = 'report'; track('finish', {n:list.length});
+  if(S.profile){ S.profile.session = 's'+Date.now(); saveProfile(); }
+  S.step = 'setup';
+  if(!S.reports[sid] && list.length){
+    await run('Writing your interview report…', async () => {
+      let r = null; try { r = await ask(reportPrompt(list), 'default'); } catch(e){ r = null; }
+      if(r && r.headline){ S.reports[sid] = {kind:'report', session:sid, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2), priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:(p.answers||[]).map(Number)})), at:Date.now()}; persist('rep_'+sid, S.reports[sid]); }
+    });
+  } else render();
+}
+function reportView(){
+  const sid = S.reportSid, list = sessAnswers(sid), rep = S.reports[sid];
+  if(!list.length) return `<div class="sheet"><p>No answers in this interview.</p></div>`;
+  const ranked = [...list].sort((a,b)=>ansAvg(b)-ansAvg(a)), best = ranked[0], worst = ranked[ranked.length-1];
+  const dAvg = DIMS.map(d=>({d, v:avg(list.map(a=>a.result.scores[d.k].score).filter(v=>v!=null))}));
+  const reqs = S.profile ? S.profile.setup.requirements : [];
+  const cov = reqs.map(r=>{ const hits = list.filter(a=>(a.q.requirement_ids||[]).includes(r.id)); return {r, n:hits.length, v:hits.length ? Math.max(...hits.map(ansAvg)) : null}; });
+  const missing = cov.filter(x=>!x.n), weakReq = cov.filter(x=>x.n && x.v < 3);
+  const V = list.filter(a=>a.delivery && a.delivery.answer);
+  const ev = list.flatMap(a=>DIMS.map(d=>a.result.scores[d.k]).filter(s=>s.evidence)), evOk = ev.filter(s=>s.verified).length;
+  const disputes = list.reduce((n,a)=>n+Object.keys(a.disputes||{}).length,0);
+  const num = a => list.indexOf(a) + 1;
+  const ansCard = (label, a) => `<div class="metric"><div class="k">${label}</div><p style="margin:6px 0">${num(a)}. ${esc(a.q.question)}</p><div class="spread"><b>${fmt(ansAvg(a))} / 5</b><button class="link" data-act="retryq" data-i="${a.id}">Retry this question</button></div></div>`;
+  return `<div class="sheet">
+    <div class="spread"><div><h2>Interview report</h2><p class="note" style="margin:0">${esc(S.profile?.setup.role || '')}${S.profile?.setup.company ? ' at '+esc(S.profile.setup.company) : ''}. ${list.length} ${list.length===1?'question':'questions'}, ${new Date(list[0].createdAt).toLocaleDateString()}.</p></div>
+    <div class="big">${fmt(avg(list.map(ansAvg).filter(v=>v!=null)))}<small> / 5</small></div></div>
+    ${rep ? `<p class="q small" style="margin-top:16px">${esc(rep.headline)}</p>` : `<p class="note" style="margin-top:16px">The written summary couldn't be generated. The numbers below are still complete. <button class="link" data-act="regenrep">Try the summary again</button></p>`}
+  </div>
+  ${rep ? `<div class="grid2" style="margin-top:18px">
+    <div class="sheet"><h3>Work on these next</h3><ol class="prio">${rep.priorities.map(p=>`<li><b>${esc(p.title)}</b><br>${esc(p.detail)}</li>`).join('')}</ol></div>
+    <div class="sheet"><h3>What went well</h3>${rep.strengths.map(t=>`<p style="margin:0 0 10px">${esc(t)}</p>`).join('') || '<p class="note">None noted.</p>'}</div>
+  </div>` : ''}
+  <div class="grid2" style="margin-top:18px">
+    <div class="sheet"><h3>Scores by dimension</h3>
+      ${dAvg.map(x=>`<div class="bar"><span>${x.d.name}</span><span class="track"><span class="fill" style="width:${x.v==null?0:x.v/5*100}%;display:block"></span></span><b>${fmt(x.v)}</b></div>`).join('')}
+    </div>
+    <div class="sheet"><h3>Role requirements</h3>
+      <ul class="list">${cov.map(x=>`<li><span>${esc(x.r.text)}<div class="sub">${x.n ? (x.v < 3 ? 'Covered, but weak' : 'Covered') : 'Not covered in this interview'}</div></span><b>${x.v==null?'–':fmt(x.v)}</b></li>`).join('')}</ul>
+      ${missing.length || weakReq.length ? `<div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="practicereq" data-r="${esc((missing[0]||weakReq[0]).r.id)}">Practice “${esc((missing[0]||weakReq[0]).r.text)}”</button></div>` : ''}
+    </div>
+  </div>
+  ${list.length > 1 ? `<div class="grid2" style="margin-top:18px">${ansCard('Strongest answer', best)}${ansCard('Answer to work on', worst)}</div>` : ''}
+  <div class="metrics" style="margin-top:18px">
+    ${V.length ? `<div class="metric"><div class="v">${Math.round(avg(V.map(a=>a.delivery.answer.wpm).filter(x=>x!=null))||0) || '–'}</div><div class="k">Average words per minute</div></div>
+    <div class="metric"><div class="v">${fmt(avg(V.map(a=>a.delivery.answer.fillerTotal)))}</div><div class="k">Filler words per answer</div></div>` : ''}
+    <div class="metric"><div class="v">${ev.length ? Math.round(evOk/ev.length*100)+'%' : '–'}</div><div class="k">Scores whose quote was found in your answers</div></div>
+    <div class="metric"><div class="v">${disputes}</div><div class="k">Scores you disagreed with</div></div>
+  </div>
+  <div class="actions"><button class="btn pen" data-act="newinterview">Start a new interview</button><button class="btn ghost" data-act="view" data-v="progress">See all progress</button></div>`;
+}
+
+/* ---------- owner usage dashboard ---------- */
+async function loadUsage(){
+  if(!S.metrics){ S.usage = {error:"Usage data isn't available in this view."}; return render(); }
+  S.usage = {loading:true}; render();
+  try {
+    const snap = await S.metrics.orderBy('at','desc').limit(5000).get();
+    S.usage = {events: snap.docs.map(d=>d.data()).filter(Boolean)};
+  } catch(e){ S.usage = {error:"Couldn't load usage data. Try again."}; }
+  render();
+}
+function usageView(){
+  const U = S.usage;
+  if(!U || U.loading) return `<div class="sheet">${'<div class="busy"><span class="dot"></span>Loading usage…</div>'}</div>`;
+  if(U.error) return `<div class="sheet"><p>${esc(U.error)}</p><button class="btn ghost" data-act="usagerefresh">Try again</button></div>`;
+  const E = U.events, by = t => E.filter(e=>e.t===t), users = t => new Set(by(t).map(e=>e.u)).size;
+  const pct = (a,b) => b ? Math.round(a/b*100)+'%' : '–';
+  if(!E.length) return `<div class="sheet"><h2>Usage</h2><p>No activity yet. Once people use the coach, anonymous counts show up here.</p></div>`;
+  const visitors = new Set(E.map(e=>e.u)).size, sc = by('scored'), q = by('question').length, ans = by('answer');
+  const funnel = [['Started setup', users('setup')], ['Got a question', users('question')], ['Answered a question', users('answer')], ['Got feedback', users('scored')], ['Finished an interview', users('finish')]];
+  const top = funnel[0][1] || visitors;
+  const quotes = sc.reduce((n,e)=>n+(e.quotes||0),0), quotesOk = sc.reduce((n,e)=>n+(e.quotesOk||0),0);
+  const selfN = sc.reduce((n,e)=>n+(e.selfN||0),0), selfA = sc.reduce((n,e)=>n+(e.selfAgree||0),0);
+  const disp = by('dispute'), dispBy = Object.fromEntries(DIMS.map(d=>[d.k, disp.filter(e=>e.dim===d.k).length]));
+  const days = [...new Set(E.map(e=>new Date(e.at).toLocaleDateString()))];
+  return `<div class="sheet"><div class="spread"><div><h2>Usage</h2><p class="note" style="margin:0">Anonymous counts from everyone who used the coach. Only you see this tab.</p></div><button class="btn ghost" data-act="usagerefresh">Refresh</button></div></div>
+  <div class="metrics" style="margin-top:18px">
+    <div class="metric"><div class="v">${visitors}</div><div class="k">People who used it</div></div>
+    <div class="metric"><div class="v">${ans.length}</div><div class="k">Answers given</div></div>
+    <div class="metric"><div class="v">${by('finish').length}</div><div class="k">Interviews finished</div></div>
+    <div class="metric"><div class="v">${days.length}</div><div class="k">Active days</div></div>
+  </div>
+  <div class="grid2">
+    <div class="sheet"><h3>Funnel</h3>
+      ${funnel.map(([n,v])=>`<div class="bar"><span>${n}</span><span class="track"><span class="fill" style="width:${top?v/top*100:0}%;display:block"></span></span><b>${v}</b></div>`).join('')}
+      <p class="note" style="margin:10px 0 0">People at each step. ${pct(users('answer'), top)} of people who started went on to answer a question.</p>
+    </div>
+    <div class="sheet"><h3>Is the feedback trusted?</h3>
+      <ul class="list">
+        <li><span>Scores whose quote was found in the answer</span><b>${pct(quotesOk, quotes)}</b></li>
+        <li><span>Coach within 1 point of the person's self-score</span><b>${pct(selfA, selfN)}</b></li>
+        <li><span>Scores disputed, per answer scored</span><b>${sc.length ? fmt(disp.length/sc.length) : '–'}</b></li>
+        <li><span>Rewrites with unverified details</span><b>${pct(sc.filter(e=>e.flags>0).length, sc.length)}</b></li>
+        <li><span>Average score</span><b>${fmt(avg(sc.map(e=>e.avg).filter(v=>v!=null)))}</b></li>
+      </ul>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:18px">
+    <div class="sheet"><h3>Disputes by dimension</h3>
+      ${DIMS.map(d=>`<div class="bar"><span>${d.name}</span><span class="track"><span class="fill" style="width:${disp.length?dispBy[d.k]/disp.length*100:0}%;display:block"></span></span><b>${dispBy[d.k]}</b></div>`).join('')}
+      <p class="note" style="margin:10px 0 0">The most-disputed dimension is the first rubric anchor to revisit in calibration mode.</p>
+    </div>
+    <div class="sheet"><h3>How people practice</h3>
+      <ul class="list">
+        <li><span>Answers given by voice</span><b>${pct(ans.filter(e=>e.voice).length, ans.length)}</b></li>
+        <li><span>Questions skipped</span><b>${pct(by('skip').length, q)}</b></li>
+        <li><span>Questions rated realistic</span><b>${pct(by('qrate').filter(e=>e.v==='up').length, by('qrate').length)}${by('qrate').length?` <span class="note">of ${by('qrate').length}</span>`:''}</b></li>
+        <li><span>Answers that were retries</span><b>${pct(ans.filter(e=>e.retry).length, ans.length)}</b></li>
+        <li><span>Answers that got a second follow-up</span><b>${pct(by('followup2').length, ans.length)}</b></li>
+        <li><span>Setups using the sample resume</span><b>${pct(by('setup').filter(e=>e.sample).length, by('setup').length)}</b></li>
+      </ul>
+    </div>
+  </div>`;
+}
+
+function render(){
+  const app = $('#app');
+  const keep = {}; ['resume','jd','answer','follow','follow2'].forEach(id=>{const el=document.getElementById(id); if(el) keep[id]=el.value;});
+  document.querySelectorAll('[data-keep]').forEach(el=>{ keep[el.id] = el.value; });
+  Object.assign(S.draft, keep);
+  const tab = (v,l) => `<button data-act="view" data-v="${v}" ${S.view===v?'aria-current="page"':''}>${l}</button>`;
+  let body;
+  if(!S.loaded) body = `<div class="busy" role="status"><span class="dot"></span>Loading…</div>`;
+  else if(S.view==='progress') body = progressView();
+  else if(S.view==='about') body = aboutView();
+  else if(S.view==='calibrate') body = calView();
+  else if(S.view==='usage') body = usageView();
+  else if(S.view==='report') body = S.busy ? `<div class="sheet">${busyView()}</div>` : reportView();
+  else {
+    body = S.step === 'setup' ? '' : stepper();
+    if(S.busy) body += `<div class="sheet">${busyView()}</div>`;
+    else if(S.step==='scoring' && S.error) body += `<div class="sheet"><p>The feedback couldn't be generated.</p><button class="btn pen" data-act="score">Try again</button></div>`;
+    else body += ({setup:setupView, question:questionView, followup:followView, followup2:follow2View, self:selfView, feedback:feedbackView, scoring:()=>`<div class="sheet">${busyView()}</div>`}[S.step])();
+  }
+  app.innerHTML = `<header class="top"><div class="brand">Interview Coach<small>Questions from your resume. Scores that show their evidence.</small></div>
+    <nav class="tabs" aria-label="Sections">${tab('practice','Practice')}${tab('progress','Progress')}${tab('about','How scoring works')}${S.calOn?tab('calibrate','Calibrate'):''}${S.isOwner?tab('usage','Usage'):''}</nav></header>
+    ${S.view==='practice' && S.step==='setup' ? keyCard() : ''}
+    ${S.notice?`<div class="banner">${esc(S.notice)}</div>`:''}
+    ${body}
+    ${S.error?`<p class="err" role="alert">${esc(S.error)}</p>`:''}
+    ${S.shortWarn?`<div class="shortwarn" role="alert"><span>That's a short answer (${S.shortWarn.n} ${S.shortWarn.n===1?'word':'words'}). ${S.shortWarn.target==='answer' ? 'Real interview answers usually run 1 to 2 minutes.' : 'A sentence or two usually works better for a follow-up.'} Keep going, or submit it as it is and the coach will score exactly what you gave.</span><span class="row"><button class="btn ghost sm" data-act="keepanswering">Keep answering</button><button class="btn sm" data-act="submitanyway">Submit anyway</button></span></div>`:''}
+    ${S.saveNote?`<p class="note foot">${esc(S.saveNote)}</p>`:''}`;
+  const f = $('#file');
+  if(f) f.onchange = async () => {
+    const file = f.files[0]; if(!file) return;
+    $('#filenote').textContent = 'Reading ' + file.name + '…';
+    try { const t = await readFile(file); $('#resume').value = t; S.draft.resume = t; $('#filenote').textContent = 'Loaded ' + file.name + '. Check the text looks right.'; }
+    catch(e){ $('#filenote').textContent = e.message || "Couldn't read that file. Paste the text instead."; }
+  };
+  const ss = $('#selfscore'); if(ss) ss.onchange = () => { S.setup.selfScore = ss.checked; };
+  const vm = $('#voicemode'); if(vm) vm.onchange = () => { S.setup.voice = vm.checked; if(S.profile){ S.profile.voice = vm.checked; saveProfile(); } render(); };
+  const ar = $('#autoread'); if(ar) ar.onchange = () => { S.setup.autoRead = ar.checked; if(S.profile){ S.profile.autoRead = ar.checked; saveProfile(); } };
+  const cb = $('#calblind'); if(cb) cb.onchange = () => { S.blind = cb.checked; render(); };
+  const c2 = $('#calr2'); if(c2) c2.onchange = () => { S.r2 = c2.checked; render(); };
+  const fs = $('#focus'); if(fs) fs.onchange = () => { S.focus = fs.value || null; };
+  meter('answer', 150, 300); meter('follow', 40, 150); meter('follow2', 30, 120);
+  if(S.speakNext && S.setup.voice && S.setup.autoRead){ const t = S.speakNext; S.speakNext = null; setTimeout(()=>speak(t), 150); } else S.speakNext = null;
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const act = b.dataset.act, v = b.dataset.v;
+  if(act !== 'submitanyway' && act !== 'keepanswering') S.shortWarn = null;
+  if(act !== 'dictate' && rec){ recWant = false; rec.stop(); }
+  if(act !== 'dictate' && S.timer && !/^(answer|follow|follow2)$/.test(act)) stopTimer();
+  if(!/^(listen|dictate|tts-)/.test(act) && S.tts && S.tts !== 'idle') ttsStop();
+  S.error = null;
+  if(act==='view'){ S.view = v; render(); if(v==='usage') loadUsage(); return; }
+  if(act==='usagerefresh') return loadUsage();
+  if(act==='gopractice'){ S.view='practice'; return render(); }
+  if(act==='type'){ S.setup.type = v; return render(); }
+  if(act==='level'){ S.setup.level = v; return render(); }
+  if(act==='start') return startSetup();
+  if(act==='next'){ return nextQuestion(); }
+  if(act==='skip'){ track('skip'); if(S.cur && S.profile){ S.profile.skipped = [...(S.profile.skipped||[]), {question:S.cur.q.question, requirement_ids:S.cur.q.requirement_ids||[]}].slice(-25); saveProfile(); } return nextQuestion(); }
+  if(act==='answer') return submitAnswer();
+  if(act==='follow') return submitFollow();
+  if(act==='follow2') return submitFollow2();
+  if(act==='dictate') return dictate(b.dataset.t);
+  if(act==='mictry'){ S.micBlocked = false; return render(); }
+  if(act==='savekey'){ const k = ($('#apikey').value || '').trim(); if(k.length < 20){ S.error = "That doesn't look like a full API key. Copy it again from Google AI Studio."; return render(); } setKey(k); return render(); }
+  if(act==='clearkey'){ setKey(''); return render(); }
+  if(act==='usedictation'){ S.micBlocked = true; return render(); }
+  if(act==='listen') return speak(S.step==='followup' ? S.cur.followup : S.step==='followup2' ? S.cur.followup2 : S.cur.q.question);
+  if(act==='tts-pause'){ try { speechSynthesis.pause(); } catch(e){} S.tts = 'paused'; return ttsUpdate(); }
+  if(act==='tts-resume'){ try { speechSynthesis.resume(); } catch(e){} S.tts = 'speaking'; return ttsUpdate(); }
+  if(act==='tts-stop') return ttsStop();
+  if(act.startsWith('self-')){ S.cur.self[act.slice(5)] = Number(v); return render(); }
+  if(act==='score') return score();
+  if(act==='skipself'){ S.cur.self = {}; return score(); }
+  if(act==='retry') return retry();
+  if(act==='keepanswering'){ const t = S.shortWarn && S.shortWarn.target; S.shortWarn = null; render(); const el = t && document.getElementById(t); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); } return; }
+  if(act==='submitanyway'){ const t = S.shortWarn && S.shortWarn.target; S.shortWarn = null; S.forceShort = true;
+    try { if(t==='answer') submitAnswer(); else if(t==='follow') submitFollow(); else if(t==='follow2') submitFollow2(); } finally { S.forceShort = false; } return; }
+  if(act==='editsetup'){ S.editSetup = true; return render(); }
+  if(act==='canceledit'){ S.editSetup = false; return render(); }
+  if(act==='mode'){ S.setup.voice = v === 'voice'; if(S.profile){ S.profile.voice = S.setup.voice; saveProfile(); } return render(); }
+  if(act==='delask'){ S.confirmDelete = true; return render(); }
+  if(act==='delno'){ S.confirmDelete = false; return render(); }
+  if(act==='delyes') return deleteAll();
+  if(act==='nudgeno'){ S.nudgeOff = {...(S.nudgeOff||{}), [S.profile?.session]: true}; return render(); }
+  if(act==='finish') return finishInterview();
+  if(act==='newinterview'){ S.view = 'practice'; S.focus = null; return nextQuestion(); }
+  if(act==='openreport'){ S.reportSid = b.dataset.s; S.view = 'report'; if(!S.reports[b.dataset.s]){ const list = sessAnswers(b.dataset.s); return run('Writing your interview report…', async () => { let r = null; try { r = await ask(reportPrompt(list), 'default'); } catch(e){} if(r && r.headline){ S.reports[b.dataset.s] = {kind:'report', session:b.dataset.s, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2), priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:[]})), at:Date.now()}; persist('rep_'+b.dataset.s, S.reports[b.dataset.s]); } }); } return render(); }
+  if(act==='regenrep'){ delete S.reports[S.reportSid]; b.dataset.s = S.reportSid; const list = sessAnswers(S.reportSid); return run('Writing your interview report…', async () => { const r = await ask(reportPrompt(list), 'default'); if(r && r.headline){ S.reports[S.reportSid] = {kind:'report', session:S.reportSid, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2), priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:[]})), at:Date.now()}; persist('rep_'+S.reportSid, S.reports[S.reportSid]); } }); }
+  if(act==='retryq'){ const a = S.answers.find(x=>x.id===b.dataset.i); if(!a) return; S.cur = a; S.view = 'practice'; return retry(); }
+  if(act==='practicereq'){ S.focus = b.dataset.r; S.view = 'practice'; return nextQuestion(); }
+  if(act==='calon'){ S.calOn = true; S.view = 'calibrate'; return render(); }
+  if(act==='caladd'){ const t = ($('#calbulk').value||''); const n = addCal(parseBulk(t)); if(!n){ S.error = 'No answers found. Start each with Q: and A:, and separate answers with ---.'; } else { S.draft.calbulk = ''; $('#calbulk').value = ''; S.notice = null; } return render(); }
+  if(act==='calimport'){ const have = new Set(S.cal.map(c=>c.srcId).filter(Boolean)); const n = addCal(S.answers.filter(a=>!have.has(a.id)).map(a=>({question:a.q.question, answer:a.answer, followup:a.followup, followAnswer: a.followAnswer2 ? a.followAnswer + '\n\n(Second follow-up: ' + a.followup2 + ')\n' + a.followAnswer2 : a.followAnswer, srcId:a.id}))); if(!n) S.error = 'Your practice answers are already in the test set.'; return render(); }
+  if(act==='calh'){ const it = S.cal.find(c=>c.id===b.dataset.i); if(!it) return; const r = b.dataset.r, d = b.dataset.d, val = v==='na' ? 'na' : Number(v); it.human[r][d] = it.human[r][d]===val ? undefined : val; if(it.human[r][d]===undefined) delete it.human[r][d]; calSave(it); return render(); }
+  if(act==='caldel'){ S.cal = S.cal.filter(c=>c.id!==b.dataset.i); remove(b.dataset.i); return render(); }
+  if(act==='calrun') return runCal();
+  if(act==='calrepeat') return runCal('repeat');
+  if(act==='qrate'){ if(S.cur && !S.cur.qRating){ S.cur.qRating = v; track('qrate', {v, kind:S.cur.q.kind}); } return render(); }
+  if(act==='calstop'){ if(S.calRun) S.calRun.stop = true; return; }
+  if(act==='calcsv') return exportCsv(b);
+  if(act==='ancsave'){ const name = ($('#ancver').value||'').trim().replace(/[^\w.-]/g,'').slice(0,20);
+    if(!name){ S.error = 'Give the new rubric version a short name, like v2.'; return render(); }
+    if(name===rubricNow().version || S.rubric.history.some(h=>h.version===name)){ S.error = `There's already a rubric called ${name}. Pick a new name.`; return render(); }
+    const anchors = {}; DIMS.forEach(d=>{ anchors[d.k] = [0,1,2].map(i=>($('#anc-'+d.k+'-'+i).value||'').trim() || rubricNow().anchors[d.k][i]); });
+    S.rubric = {current:{version:name, anchors}, history:[...S.rubric.history, S.rubric.current]};
+    Object.keys(S.draft).filter(k=>k.startsWith('anc')).forEach(k=>delete S.draft[k]);
+    persist('rubric', {kind:'rubric', ...S.rubric}); return render(); }
+  if(act==='ancreset'){ const orig = S.rubric.history[0]; S.rubric = {current:orig, history:[]}; Object.keys(S.draft).filter(k=>k.startsWith('anc')).forEach(k=>delete S.draft[k]); persist('rubric', {kind:'rubric', ...S.rubric}); return render(); }
+  if(act==='sample'){ S.usedSample = true; S.draft.resume = SAMPLE_RESUME; S.draft.jd = SAMPLE_JD; $('#resume').value = SAMPLE_RESUME; $('#jd').value = SAMPLE_JD; return startSetup(); }
+  if(act==='copy'){ const rr = S.cur?.result; const t = rr && rr.rewrites && rr.rewrites.length ? rr.rewrites.map(x => (x.part === 'followup2' ? 'Second follow-up: ' + S.cur.followup2 : x.part === 'followup' ? 'Follow-up: ' + S.cur.followup : 'Question: ' + S.cur.q.question) + '\n' + x.text).join('\n\n') : (rr?.rewrite || ''); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>{ b.textContent = 'Copied'; }).catch(()=>{ b.textContent = 'Select the text to copy it'; }); return; }
+  if(act==='disagree'){ S.disputeOpen = b.dataset.d; render(); const i = document.getElementById('disp-'+b.dataset.d); if(i) i.focus(); return; }
+  if(act==='savedisp') return saveDispute(b.dataset.d);
+});
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter' && e.target.id && e.target.id.startsWith('disp-')){ e.preventDefault(); saveDispute(e.target.id.slice(5)); }
+});
+
+(async function init(){
+  S.sample = { json: (prompt, opts) => callModel(prompt, opts && opts.modelTier) };
+  S.dl = downloadsShim; S.metrics = null; S.isOwner = false;
+  try { localStorage.setItem('ic_test', '1'); localStorage.removeItem('ic_test'); S.store = localStore('ic'); } catch(e){ S.store = null; }
+  if(S.store){
+    try {
+      const snap = await S.store.get();
+      snap.docs.forEach(d => { const x = d.data(); if(!x) return;
+        if(d.id === 'profile'){ S.profile = x; }
+        else if(d.id === 'rubric' && x.current){ S.rubric = {current:x.current, history:x.history||[]}; }
+        else if(x.kind === 'report' && x.session){ S.reports[x.session] = x; }
+        else if(x.kind === 'cal'){ S.cal.push(x); S.calOn = true; }
+        else if(x.kind === 'answer' && x.result){ S.answers.push(x); }
+      });
+      S.answers.sort((a,b)=>a.createdAt-b.createdAt); S.cal.sort((a,b)=>a.createdAt-b.createdAt);
+      if(S.profile){ S.setup.type = S.profile.type || S.setup.type; S.setup.level = S.profile.level || S.setup.level; if(S.profile.selfScore!=null) S.setup.selfScore = S.profile.selfScore; if(S.profile.voice!=null) S.setup.voice = S.profile.voice; if(S.profile.autoRead!=null) S.setup.autoRead = S.profile.autoRead; }
+    } catch(e){}
+  }
+  S.saveNote = S.store ? (CONFIG.PROXY_URL ? "Free demo with a daily usage limit. Your answers and reports are saved only in this browser." : "Free demo on Google's Gemini free tier. Google may use what you send to improve its models, and people may review it. Everything else stays in this browser.") : "Your browser isn't allowing this page to save, so your progress lasts until you close the page.";
+  S.loaded = true; render();
+})();
+
+</script>
+</body>
+</html><!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Interview Coach</title>
+<meta name="description" content="Practice interviews with questions from your resume, and feedback that shows its evidence.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js" defer></script>
+<style>
+:root{
+  --paper:#EEF2F6; --sheet:#FFFFFF; --ink:#16202C; --muted:#5A6676; --line:#D3DAE3;
+  --pen:#2340C9; --pen-ink:#FFFFFF; --warn:#A4441C; --ok:#1F7A4A;
+  --hl-relevance:#FFE27A; --hl-structure:#B5E2FF; --hl-specificity:#C4EFC0; --hl-impact:#FFC9DC; --hl-clarity:#DDCBFF;
+  --sans:"Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10151B; --sheet:#18202A; --ink:#E6EBF1; --muted:#9AA6B5; --line:#2C3746;
+    --pen:#8EA2FF; --pen-ink:#0E1420; --warn:#FF9C70; --ok:#6FD39C;
+    --hl-relevance:#6B5A12; --hl-structure:#1D4A66; --hl-specificity:#25512A; --hl-impact:#64253C; --hl-clarity:#43306B;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10151B; --sheet:#18202A; --ink:#E6EBF1; --muted:#9AA6B5; --line:#2C3746;
+  --pen:#8EA2FF; --pen-ink:#0E1420; --warn:#FF9C70; --ok:#6FD39C;
+  --hl-relevance:#6B5A12; --hl-structure:#1D4A66; --hl-specificity:#25512A; --hl-impact:#64253C; --hl-clarity:#43306B;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--pen);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 20px 64px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.brand{font-weight:700;font-size:1.35rem;letter-spacing:-0.01em}
+.brand small{display:block;font-weight:400;font-size:.85rem;color:var(--muted);letter-spacing:0}
+nav.tabs{display:flex;gap:4px;background:var(--sheet);border:1px solid var(--line);border-radius:999px;padding:4px}
+nav.tabs button{border:0;background:none;padding:6px 14px;border-radius:999px;cursor:pointer;color:var(--muted);white-space:nowrap}
+@media (max-width:480px){nav.tabs button{padding:6px 10px;font-size:.9rem}}
+nav.tabs button[aria-current="page"]{background:var(--ink);color:var(--paper)}
+.banner{border:1px solid var(--line);border-left:4px solid var(--warn);background:var(--sheet);padding:10px 14px;border-radius:6px;margin-bottom:16px}
+.note{color:var(--muted);font-size:.9rem}
+.err{color:var(--warn);font-size:.95rem;margin-top:10px}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:22px}
+.steps{display:flex;gap:18px;list-style:none;padding:0;margin:0 0 18px;flex-wrap:wrap;font-size:.9rem;color:var(--muted)}
+.steps li{display:flex;align-items:center;gap:8px}
+.steps li b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);font-weight:600;font-size:.75rem}
+.steps li[data-on]{color:var(--ink);font-weight:600}
+.steps li[data-on] b{background:var(--pen);border-color:var(--pen);color:var(--pen-ink)}
+.steps li[data-done] b{background:var(--line)}
+h2{font-size:1.25rem;margin:0 0 6px;letter-spacing:-0.01em}
+h3{font-size:1rem;margin:0 0 8px}
+label.f{display:block;font-weight:600;margin:16px 0 6px}
+textarea{width:100%;min-height:150px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--paper);line-height:1.55}
+textarea.answer{min-height:200px;font-family:var(--serif);font-size:1.05rem;line-height:1.65}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--sheet);padding:7px 12px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:8px;cursor:pointer;font-weight:600}
+.btn.pen{background:var(--pen);border-color:var(--pen);color:var(--pen-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line);font-weight:500}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.link{border:0;background:none;color:var(--pen);cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:16px}
+.check input{margin-top:5px;width:18px;height:18px}
+.q{font-family:var(--serif);font-size:clamp(1.25rem,2.2vw,1.55rem);line-height:1.4;margin:6px 0 8px;max-width:36em}
+.q.small{font-size:1.15rem}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.8rem;color:var(--muted);background:var(--paper)}
+.prior{border-left:3px solid var(--line);padding:4px 0 4px 14px;margin:10px 0 18px;color:var(--muted);font-family:var(--serif);white-space:pre-wrap;max-height:9em;overflow:auto}
+.busy{display:flex;align-items:center;gap:12px;padding:30px 0;color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--pen);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25;transform:scale(.7)}}
+@media (prefers-reduced-motion:reduce){.dot,.recdot{animation:none}}
+.selfrow{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.selfrow .seg button{min-width:40px}
+.anchor{font-size:.82rem;color:var(--muted);grid-column:2}
+/* feedback */
+.summary{display:grid;grid-template-columns:auto 1fr 1fr;gap:20px;align-items:start;margin-bottom:22px}
+.big{font-size:2.6rem;font-weight:700;line-height:1;letter-spacing:-0.02em}
+.big small{font-size:1rem;color:var(--muted);font-weight:500}
+.sum-label{font-size:.85rem;color:var(--muted);margin-bottom:2px}
+.fb{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px}
+.answertext{font-family:var(--serif);font-size:1.05rem;line-height:1.75;white-space:pre-wrap}
+.answertext .lbl{display:block;font-family:var(--sans);font-size:.85rem;color:var(--muted);margin:14px 0 4px;white-space:normal}
+mark.hl{color:inherit;padding:1px 2px;border-radius:3px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.hl-relevance{background:var(--hl-relevance)} .hl-structure{background:var(--hl-structure)} .hl-specificity{background:var(--hl-specificity)} .hl-impact{background:var(--hl-impact)} .hl-clarity{background:var(--hl-clarity)}
+.dim{padding:12px 0;border-bottom:1px solid var(--line)}
+.dim:last-child{border-bottom:0}
+.dimhead{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.dimname{display:flex;align-items:center;gap:8px;font-weight:600}
+.swatch{width:12px;height:12px;border-radius:3px;flex:none}
+.pips{display:flex;gap:4px}
+.pip{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--ink)}
+.pip.on{background:var(--ink)}
+.dimbody{font-size:.92rem;margin-top:6px}
+.meta{display:flex;gap:12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:6px;align-items:center}
+.meta .bad{color:var(--warn);font-weight:600}
+.meta .good{color:var(--ok);font-weight:600}
+.dispute{display:flex;gap:8px;margin-top:8px}
+.dispute input{flex:1;border:1px solid var(--line);border-radius:6px;padding:6px 10px;background:var(--paper);min-width:0}
+.rewrite{font-family:var(--serif);font-size:1.05rem;line-height:1.7;white-space:pre-wrap;margin-top:6px}
+.gap{background:var(--paper);border:1px dashed var(--muted);border-radius:4px;padding:0 4px;font-family:var(--sans);font-size:.9em;color:var(--muted)}
+.flag{border-bottom:2px solid var(--warn)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+/* progress */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.metric{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:14px}
+.metric .v{font-size:1.6rem;font-weight:700}
+.metric .k{font-size:.85rem;color:var(--muted)}
+.bar{display:grid;grid-template-columns:140px 1fr 40px;gap:10px;align-items:center;padding:6px 0}
+.track{height:10px;background:var(--paper);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.fill{height:100%;background:var(--ink)}
+.list{list-style:none;padding:0;margin:0}
+.list li{padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:14px}
+.list li:last-child{border-bottom:0}
+.list .sub{font-size:.85rem;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top}
+th{font-weight:600}
+.prose{max-width:44em}
+.prose p{margin:0 0 12px}
+.delta{font-size:.78rem;font-weight:600;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.delta.up,.delta-line.up{color:var(--ok)} .delta.down,.delta-line.down{color:var(--warn)}
+.delta-line{font-size:.9rem;font-weight:600;margin-top:4px}
+select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sheet);max-width:100%}
+.btn.danger{background:var(--warn);border-color:var(--warn);color:var(--sheet)}
+.nudge{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-left-color:var(--pen)}
+.prio{margin:0;padding-left:20px} .prio li{margin-bottom:12px}
+.trybox{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;border:1px dashed var(--line);border-radius:8px;padding:12px 14px;margin-top:14px;background:var(--paper)}
+.qrate{margin:0 0 6px}
+.eyebrow{font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.sheet.sec{margin-top:16px}
+.labelrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.uplink{color:var(--pen);font-size:.9rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.choice{display:flex;flex-direction:column;gap:4px;text-align:left;border:1.5px solid var(--line);background:var(--sheet);border-radius:10px;padding:14px;cursor:pointer}
+.choice span{font-size:.88rem;color:var(--muted)}
+.choice[aria-pressed="true"]{border-color:var(--pen);box-shadow:0 0 0 1px var(--pen) inset}
+.optrow{display:flex;gap:28px;flex-wrap:wrap}
+details.more{margin-top:18px}
+details.more summary{color:var(--muted);font-weight:500}
+.startbar{align-items:center;margin-top:26px}
+.fixbox{border-left:3px solid var(--pen);padding-left:14px}
+.warnline{color:var(--warn);font-size:.9rem;font-weight:500;margin:0 0 6px}
+.actionbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}
+.foot{margin-top:28px;text-align:center}
+@media (max-width:820px){ .choices{grid-template-columns:1fr} }
+.keycard{margin-bottom:16px;border-left:3px solid var(--pen)}
+.keycard input{flex:1;min-width:220px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--paper);color:var(--ink)}
+.keyline{margin:0 0 12px}
+.shortwarn{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;background:var(--sheet);font-size:.95rem}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
