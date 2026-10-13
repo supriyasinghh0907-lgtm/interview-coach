@@ -1,45 +1,73 @@
-// Cloudflare Worker for Interview Coach (optional, free).
-// It keeps your Gemini API key secret so visitors don't need their own.
-// Settings, added in the Cloudflare dashboard under the worker's Settings > Variables and Secrets:
-//   GEMINI_API_KEY  (Secret)    your key from Google AI Studio
-//   ALLOWED_ORIGIN  (Variable)  your site, e.g. https://yourname.github.io
-// The model is chosen here, not by the page, so nobody can use your key for other models.
+// Interview Coach worker, runs on Cloudflare's free plan.
+// It answers the app using Cloudflare Workers AI, so no API key is needed anywhere.
+//
+// Setup (see SETUP.md):
+//   1. Settings > Bindings > Add > Workers AI, variable name: AI
+//   2. Settings > Variables and Secrets > ALLOWED_ORIGIN = https://YOURNAME.github.io
 
-const MODELS = { default: 'gemini-flash-latest', quick: 'gemini-flash-lite-latest' };
+const MODELS = {
+  default: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', // questions, scoring, reports
+  quick: '@cf/meta/llama-3.1-8b-instruct-fast',         // follow-up questions
+};
+
+const SYSTEM = 'You are the engine of an interview practice app. Reply with ONE valid JSON object and nothing else: no markdown, no code fences, no explanation.';
+
+function extractJson(out) {
+  if (out && typeof out === 'object') return out;
+  const text = String(out || '').replace(/```json|```/g, '').trim();
+  try { return JSON.parse(text); } catch {}
+  const a = text.indexOf('{'), b = text.lastIndexOf('}');
+  if (a >= 0 && b > a) { try { return JSON.parse(text.slice(a, b + 1)); } catch {} }
+  return null;
+}
 
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
-    const allowed = (env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+    const allowed = (env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
     const ok = allowed.length === 0 || allowed.includes(origin);
     const cors = {
-      'Access-Control-Allow-Origin': ok ? origin || '*' : 'null',
+      'Access-Control-Allow-Origin': ok ? (origin || '*') : 'null',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Vary': 'Origin',
     };
-    const reply = (obj, status) => new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+    const reply = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
-    if (!ok) return reply({ error: { message: 'This site is not allowed to use this worker.' } }, 403);
-    if (request.method !== 'POST') return reply({ error: { message: 'Use POST.' } }, 405);
-    if (!env.GEMINI_API_KEY) return reply({ error: { message: 'GEMINI_API_KEY is not set on the worker.' } }, 500);
+    if (!ok) return reply({ error: { code: 'origin', message: 'This site is not allowed to use this worker.' } }, 403);
+    if (request.method !== 'POST') return reply({ error: { code: 'method', message: 'Use POST.' } }, 405);
+    if (!env.AI) return reply({ error: { code: 'setup', message: 'Add the Workers AI binding named AI.' } }, 500);
 
     let body;
-    try { body = await request.json(); } catch { return reply({ error: { message: 'Bad request.' } }, 400); }
+    try { body = await request.json(); } catch { return reply({ error: { code: 'bad_request' } }, 400); }
     const prompt = String(body.prompt || '');
-    if (!prompt) return reply({ error: { message: 'Empty prompt.' } }, 400);
-    if (prompt.length > 60000) return reply({ error: { message: 'Prompt too large.' } }, 413);
+    if (!prompt) return reply({ error: { code: 'bad_request' } }, 400);
+    if (prompt.length > 40000) return reply({ error: { code: 'too_large' } }, 413);
     const tier = body.tier === 'quick' ? 'quick' : 'default';
 
-    const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELS[tier]}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json', temperature: tier === 'quick' ? 0.7 : 0.4 },
-      }),
+    const run = model => env.AI.run(model, {
+      messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: prompt }],
+      max_tokens: 2000,
+      temperature: tier === 'quick' ? 0.7 : 0.3,
     });
-    return new Response(await upstream.text(), { status: upstream.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+    let out;
+    try {
+      out = await run(MODELS[tier]);
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      // Free daily allocation used up, or too many requests at once
+      if (/limit|quota|neuron|429|capacity/i.test(msg)) return reply({ error: { code: 'daily_limit', message: msg } }, 429);
+      return reply({ error: { code: 'model', message: msg } }, 502);
+    }
+
+    let json = extractJson(out && out.response);
+    if (!json) {
+      // One retry: small models sometimes add text around the JSON
+      try { out = await run(MODELS[tier]); json = extractJson(out && out.response); } catch {}
+    }
+    if (!json) return reply({ error: { code: 'bad_json' } }, 502);
+    return reply({ json });
   },
 };

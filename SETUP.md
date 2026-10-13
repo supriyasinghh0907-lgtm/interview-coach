@@ -1,54 +1,50 @@
-# Put Interview Coach online for free
+# Put Interview Coach online for free (Cloudflare)
 
-This takes about 15 minutes and costs nothing. You need a GitHub account and a Google account.
+Visitors use the app directly: no API key, no account, no sign-up. It runs on Cloudflare Workers AI's free daily allowance, so it costs nothing. Takes about 15 minutes.
 
-## Step 1: Get a free Gemini API key
+## Part 1: Put the site on GitHub Pages
 
-1. Go to https://aistudio.google.com/apikey and sign in with your Google account.
-2. Click **Create API key** and copy it somewhere safe.
-3. **Don't turn on billing** for this Google project. Without billing, you stay on the free tier and can never be charged. If the free limit runs out, the app just says "try again later."
+1. Upload `index.html`, `worker.js`, `SETUP.md` and `README.md` to your public GitHub repo (**Add file → Upload files → Commit changes**).
+2. Go to **Settings → Pages**, set **Branch** to `main` and `/ (root)`, and click **Save**.
+3. After a minute or two, your site is at `https://YOURNAME.github.io/interview-coach/`.
 
-## Step 2: Put the site on GitHub Pages
+## Part 2: Create the free Cloudflare worker
 
-1. On GitHub, click **New repository**. Name it `interview-coach`, set it to **Public**, and click **Create repository**.
-2. Click **uploading an existing file**, then drag in `index.html`, `README.md`, `SETUP.md` and `worker.js`. Click **Commit changes**.
-3. Go to the repo's **Settings → Pages**.
-4. Under **Branch**, choose `main` and `/ (root)`, then click **Save**.
-5. Wait about a minute and refresh. Your site's address appears at the top, like `https://yourname.github.io/interview-coach/`.
+1. Sign up at https://dash.cloudflare.com. Choose the **Free** plan and **don't add a payment method**.
+2. In the left menu, go to **Workers & Pages** (under Compute), then click **Create** → **Create Worker** (or **Start with Hello World**).
+3. Name it `interview-coach-api` and click **Deploy**.
+4. Click **Edit code**. Delete all the code, paste the whole contents of `worker.js`, and click **Deploy**.
 
-Open it in Chrome. Paste your API key in the box at the top, and you're ready. The microphone works here: Chrome will simply ask "Allow microphone?" the first time you press **Start speaking**.
+## Part 3: Connect Workers AI to the worker
 
-**Never paste your API key into `index.html`.** The repo is public, so anyone could copy it.
+1. Go back to the worker's page and open **Settings**.
+2. Under **Bindings**, click **Add** → **Workers AI**.
+3. Set **Variable name** to `AI` (capital letters) and click **Add Binding** / **Deploy**.
+4. Under **Variables and Secrets**, click **Add**:
+   - Type: **Text**
+   - Name: `ALLOWED_ORIGIN`
+   - Value: `https://YOURNAME.github.io` (no `/interview-coach`, no slash at the end)
+   Click **Deploy**.
+5. At the top of the worker page, copy its address, like `https://interview-coach-api.YOURNAME.workers.dev`.
 
-At this point the site works, but every visitor needs to paste their own free key. That's fine for your demo video. For a public post, do Step 3 so visitors can use it with no key.
+## Part 4: Point the site at the worker
 
-## Step 3 (recommended for public sharing): Hide your key with a free Cloudflare Worker
-
-1. Sign up at https://dash.cloudflare.com (free plan).
-2. Go to **Workers & Pages → Create → Create Worker**. Name it `interview-coach-api` and click **Deploy**.
-3. Click **Edit code**, delete everything, paste the contents of `worker.js`, and click **Deploy**.
-4. Go to the worker's **Settings → Variables and Secrets** and add:
-   - `GEMINI_API_KEY` as a **Secret**, with your key from Step 1.
-   - `ALLOWED_ORIGIN` as a **Variable** (plain text), with your site's origin, for example `https://yourname.github.io` (no path, no slash at the end).
-5. Copy the worker's address, like `https://interview-coach-api.yourname.workers.dev`.
-6. On GitHub, open `index.html`, click the pencil icon to edit, and find this line near the top of the script:
-
-   ```js
-   PROXY_URL: '',
-   ```
-
-   Put your worker's address between the quotes:
+1. On GitHub, open `index.html` and click the pencil icon.
+2. Press **Cmd + F** (Mac) or **Ctrl + F** and search for `PROXY_URL: ''`.
+3. Paste your worker address between the quotes:
 
    ```js
-   PROXY_URL: 'https://interview-coach-api.yourname.workers.dev',
+   PROXY_URL: 'https://interview-coach-api.YOURNAME.workers.dev',
    ```
 
-7. Click **Commit changes**. After a minute, refresh your site. The API key box is gone, and anyone can practice.
+4. Click **Commit changes** twice.
+5. Wait a minute, open your site, and press **Cmd + Shift + R**. The API key box is gone. Click **try a sample interview** to test it.
 
 ## Good to know
 
-- **Privacy:** on the free tier, Google may use what visitors send to improve its models, and people may review it. The site says this on the setup screen. Keep it there.
-- **Limits:** the free tier has daily and per-minute limits. If many people use it at once, some will see "The free Gemini limit was reached." You'll never get a bill as long as billing stays off.
-- **Saved data:** each visitor's answers and reports are saved only in their own browser.
-- **Model names:** if Google retires `gemini-flash-latest`, change the two model names in `worker.js` (and in `index.html` if you're not using the worker) to a current free model listed in Google AI Studio.
-- **Scoring:** Gemini may score differently from Claude. Rerun your calibration test on this version before quoting agreement numbers.
+- **Free daily allowance:** Workers AI gives every account a daily free allowance, shared by all your visitors. When it runs out, visitors see "Today's free practice limit was reached, come back tomorrow." On the Free plan with no payment method, you can't be charged.
+- **How many interviews per day:** each practice round uses about four AI calls. The large model uses more of the allowance than the small one, so expect a limited number of full rounds per day across everyone. Check usage under **AI → Workers AI** in the Cloudflare dashboard.
+- **Stretch the allowance:** in `worker.js`, change the `default` model to `@cf/meta/llama-3.1-8b-instruct-fast`. Many more rounds fit in a day, but scoring is less careful.
+- **Quality:** Llama models score differently from Claude and may quote your answer less exactly. The app shows "Quote not found" when that happens, which is the point of the evidence check. Rerun calibration mode on this version before quoting agreement numbers.
+- **Microphone:** works normally on your own site. Chrome asks "Allow microphone?" the first time.
+- **Saved data:** each visitor's answers stay in their own browser.
