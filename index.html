@@ -166,6 +166,11 @@ details.more summary{color:var(--muted);font-weight:500}
 .rwblock + .rwblock{border-top:1px solid var(--line);padding-top:14px}
 .rwq{margin:0 0 6px;font-family:var(--serif);color:var(--muted);font-style:italic}
 .rwlabel{font-family:var(--sans);font-size:.85em;color:var(--pen);letter-spacing:.02em}
+.stepbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px}
+.stepbar .steps{margin:0}
+.stepnav{gap:16px;font-size:.92rem}
+button.brand{border:0;background:none;padding:0;margin:0;text-align:left;cursor:pointer;color:inherit;font:inherit;font-weight:700;font-size:1.35rem;letter-spacing:-0.01em}
+button.brand small{display:block}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
@@ -604,6 +609,7 @@ function startSetup(){
 }
 
 function setQuestion(q){
+  S.paused = null;
   if(!q || !q.question) throw new Error("Couldn't write a question. Try again.");
   S.cur = {id:'a'+Date.now(), q:{question:String(q.question), requirement_ids:(q.requirement_ids||[]).map(String), kind:String(q.kind||''), angle:String(q.angle||'')}, attempt:1};
   S.draft.answer = ''; S.draft.follow = ''; S.step = 'question'; S.view = 'practice'; S.rec = {}; track('question', {kind:S.cur.q.kind}); S.speakNext = S.cur.q.question;
@@ -825,7 +831,9 @@ function stepper(){
   const order = ['setup','question','followup','feedback'];
   const cur = (S.step === 'self' || S.step === 'scoring') ? 'feedback' : S.step === 'followup2' ? 'followup' : S.step, ci = order.indexOf(cur);
   const names = {setup:'Setup', question:'Question', followup:'Follow-up', feedback:'Feedback'};
-  return `<ol class="steps" aria-label="Interview progress">${order.map((s,i)=>`<li ${i===ci?'data-on aria-current="step"':''} ${i<ci?'data-done':''}><b>${i+1}</b>${names[s]}</li>`).join('')}</ol>`;
+  const ol = `<ol class="steps" aria-label="Interview progress">${order.map((s,i)=>`<li ${i===ci?'data-on aria-current="step"':''} ${i<ci?'data-done':''}><b>${i+1}</b>${names[s]}</li>`).join('')}</ol>`;
+  const n = sessionCount();
+  return `<div class="stepbar">${ol}<div class="row stepnav"><span class="note">${n ? `Question ${n + (S.step==='feedback' ? 0 : 1)} of this interview` : 'Question 1 of this interview'}</span><button class="link" data-act="home">Home</button>${n ? `<button class="link" data-act="finish">End interview</button>` : ''}</div></div>`;
 }
 const seg = (act, opts, val) => `<div class="seg" role="group">${opts.map(o=>`<button type="button" data-act="${act}" data-v="${esc(o)}" aria-pressed="${o===val}">${esc(o)}</button>`).join('')}</div>`;
 const pips = n => `<span class="pips" aria-label="${n==null?'not scored':n+' out of 5'}">${[1,2,3,4,5].map(i=>`<span class="pip ${n!=null&&i<=n?'on':''}"></span>`).join('')}</span>`;
@@ -864,20 +872,41 @@ async function deleteAll(){
       const snap = await S.store.get();
       for(const d of snap.docs){ try { await S.store.doc(d.id).delete(); } catch(e){} }
     }
-    S.profile = null; S.answers = []; S.cal = []; S.reports = {}; S.cur = null; S.draft = {}; S.calOn = false;
+    S.profile = null; S.answers = []; S.cal = []; S.reports = {}; S.cur = null; S.draft = {}; S.calOn = false; S.paused = null; S.editSetup = false;
     S.rubric = {current:{version:'v1', anchors:JSON.parse(JSON.stringify(DEFAULT_ANCHORS))}, history:[]};
     S.step = 'setup'; S.view = 'practice'; S.notice = 'Your data was deleted.';
     track('delete');
   });
 }
+const sessionCount = () => S.profile && S.profile.session ? S.answers.filter(a => a.result && a.session === S.profile.session).length : 0;
+function goHome(){
+  const mid = ['question','followup','followup2','self'].includes(S.step) && S.cur && !S.cur.result;
+  S.paused = mid ? S.step : null;
+  if(rec){ recWant = false; rec.stop(); }
+  if(S.timer) stopTimer();
+  ttsStop();
+  S.step = 'setup'; S.view = 'practice'; S.editSetup = false; S.confirmDelete = false; render();
+}
+function resumePaused(){ S.step = S.paused || 'question'; S.paused = null; S.view = 'practice'; render(); }
+function newInterview(){
+  if(S.profile){ S.profile.session = 's' + Date.now(); saveProfile(); }
+  S.paused = null; S.cur = null; S.view = 'practice'; S.focus = null; S.editSetup = false;
+  return nextQuestion();
+}
 function setupView(){
   const p = S.profile;
   if(p && !S.editSetup){
+    const n = sessionCount(), total = S.answers.filter(a=>a.result).length;
+    const primary = S.paused ? `<button class="btn pen" data-act="resume">Continue your current question</button>`
+      : `<button class="btn pen" data-act="next" ${S.busy?'disabled':''}>${n ? 'Next question' : 'Start interview'}</button>`;
+    const status = S.paused ? 'You left in the middle of a question.' : n ? `This interview: ${n} ${n===1?'question':'questions'} answered.` : 'A new interview is ready to start.';
     return `<div class="sheet">
       <div class="eyebrow">Your practice interview</div>
       <h2>${esc(p.setup.role || 'Your target role')}${p.setup.company ? ' at '+esc(p.setup.company) : ''}</h2>
-      <p class="note" style="margin:0">${esc(p.type)} questions, ${esc(p.level)} level, ${S.setup.voice ? 'spoken answers' : 'typed answers'}. ${S.answers.length} ${S.answers.length===1?'question':'questions'} answered so far.</p>
-      <div class="actions"><button class="btn pen" data-act="next" ${S.busy?'disabled':''}>Start next question</button><button class="btn ghost" data-act="editsetup">Change resume or job</button></div>
+      <p class="note" style="margin:0">${esc(p.type)} questions, ${esc(p.level)} level, ${S.setup.voice ? 'spoken answers' : 'typed answers'}.</p>
+      <p style="margin:12px 0 0">${status}${total > n ? ` <span class="note">${total} answered in all your interviews.</span>` : ''}</p>
+      <div class="actions">${primary}${n ? `<button class="btn ghost" data-act="finish">Finish and see report</button>` : ''}${(n || S.paused) ? `<button class="btn ghost" data-act="newinterview">Start a new interview</button>` : ''}</div>
+      <p class="note" style="margin-top:18px">Practicing for a different job? <button class="link" data-act="editsetup">Change resume or job</button></p>
       ${deleteBlock()}
     </div>`;
   }
@@ -1353,7 +1382,7 @@ function reportView(){
     <div class="metric"><div class="v">${ev.length ? Math.round(evOk/ev.length*100)+'%' : '–'}</div><div class="k">Scores whose quote was found in your answers</div></div>
     <div class="metric"><div class="v">${disputes}</div><div class="k">Scores you disagreed with</div></div>
   </div>
-  <div class="actions"><button class="btn pen" data-act="newinterview">Start a new interview</button><button class="btn ghost" data-act="view" data-v="progress">See all progress</button></div>`;
+  <div class="actions"><button class="btn pen" data-act="newinterview">Start a new interview</button><button class="btn ghost" data-act="home">Back to home</button><button class="btn ghost" data-act="view" data-v="progress">See all progress</button></div>`;
 }
 
 /* ---------- owner usage dashboard ---------- */
@@ -1439,7 +1468,7 @@ function render(){
     else if(S.step==='scoring' && S.error) body += `<div class="sheet"><p>The feedback couldn't be generated.</p><button class="btn pen" data-act="score">Try again</button></div>`;
     else body += ({setup:setupView, question:questionView, followup:followView, followup2:follow2View, self:selfView, feedback:feedbackView, scoring:()=>`<div class="sheet">${busyView()}</div>`}[S.step])();
   }
-  app.innerHTML = `<header class="top"><div class="brand">Interview Coach<small>Questions from your resume. Scores that show their evidence.</small></div>
+  app.innerHTML = `<header class="top"><button type="button" class="brand" data-act="home" title="Go to home">Interview Coach<small>Questions from your resume. Scores that show their evidence.</small></button>
     <nav class="tabs" aria-label="Sections">${tab('practice','Practice')}${tab('progress','Progress')}${tab('about','How scoring works')}${S.calOn?tab('calibrate','Calibrate'):''}${S.isOwner?tab('usage','Usage'):''}</nav></header>
     ${S.view==='practice' && S.step==='setup' ? keyCard() : ''}
     ${S.notice?`<div class="banner">${esc(S.notice)}</div>`:''}
@@ -1468,6 +1497,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if(!b) return;
   const act = b.dataset.act, v = b.dataset.v;
   if(act !== 'submitanyway' && act !== 'keepanswering') S.shortWarn = null;
+  if(act !== 'delyes') S.notice = null;
   if(act !== 'dictate' && rec){ recWant = false; rec.stop(); }
   if(act !== 'dictate' && S.timer && !/^(answer|follow|follow2)$/.test(act)) stopTimer();
   if(!/^(listen|dictate|tts-)/.test(act) && S.tts && S.tts !== 'idle') ttsStop();
@@ -1507,7 +1537,9 @@ document.addEventListener('click', e => {
   if(act==='delyes') return deleteAll();
   if(act==='nudgeno'){ S.nudgeOff = {...(S.nudgeOff||{}), [S.profile?.session]: true}; return render(); }
   if(act==='finish') return finishInterview();
-  if(act==='newinterview'){ S.view = 'practice'; S.focus = null; return nextQuestion(); }
+  if(act==='newinterview') return newInterview();
+  if(act==='home') return goHome();
+  if(act==='resume') return resumePaused();
   if(act==='openreport'){ S.reportSid = b.dataset.s; S.view = 'report'; if(!S.reports[b.dataset.s]){ const list = sessAnswers(b.dataset.s); return run('Writing your interview report…', async () => { let r = null; try { r = await ask(reportPrompt(list), 'default'); } catch(e){} if(r && r.headline){ S.reports[b.dataset.s] = {kind:'report', session:b.dataset.s, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2), priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:[]})), at:Date.now()}; persist('rep_'+b.dataset.s, S.reports[b.dataset.s]); } }); } return render(); }
   if(act==='regenrep'){ delete S.reports[S.reportSid]; b.dataset.s = S.reportSid; const list = sessAnswers(S.reportSid); return run('Writing your interview report…', async () => { const r = await ask(reportPrompt(list), 'default'); if(r && r.headline){ S.reports[S.reportSid] = {kind:'report', session:S.reportSid, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2), priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:[]})), at:Date.now()}; persist('rep_'+S.reportSid, S.reports[S.reportSid]); } }); }
   if(act==='retryq'){ const a = S.answers.find(x=>x.id===b.dataset.i); if(!a) return; S.cur = a; S.view = 'practice'; return retry(); }
