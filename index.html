@@ -183,6 +183,7 @@ button.brand small{display:block}
 .answer.code,.codeblock,.codeans{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92rem;line-height:1.55;tab-size:4}
 .answer.code{min-height:260px;white-space:pre;overflow-x:auto}
 .codeblock{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
+.endbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
@@ -1091,6 +1092,7 @@ function endInterview(){
   return finishInterview();
 }
 function startAskback(){
+  S.askMore = false;
   S.askSid = S.profile.session; S.asks = S.asks || {}; S.asks[S.askSid] = S.asks[S.askSid] || [];
   S.step = 'askback'; S.view = 'practice'; S.cur = null; S.draft.askq = '';
   S.speakNext = "That's all the questions I had for you. Do you have any questions for me?";
@@ -1120,7 +1122,7 @@ function askSubmit(){
     const r = await ask(askPrompt(v), 'default');
     if(!r || !r.answer) throw new Error("Couldn't get an answer. Try again.");
     const item = {q:v, answer:String(r.answer), rating:Math.max(1, Math.min(5, Math.round(Number(r.rating) || 3))), why:String(r.why || ''), better:String(r.better || '')};
-    S.asks[S.askSid].push(item); S.draft.askq = ''; S.rec = {};
+    S.asks[S.askSid].push(item); S.draft.askq = ''; S.rec = {}; S.askMore = false;
     persist('ask_' + S.askSid, {kind:'asks', session:S.askSid, items:S.asks[S.askSid]});
     S.speakNext = item.answer;
   });
@@ -1134,11 +1136,12 @@ function askbackView(){
     <p class="note" style="margin-top:0">Ask what you'd really ask. The interviewer answers in character, and the coach rates your question. Asking none is usually a missed chance.</p>
     ${list.map((x, i) => `<div class="askitem"><p class="askq"><b>You:</b> ${esc(x.q)}</p><p class="aska"><b>Interviewer:</b> ${esc(x.answer)}</p>
       <div class="meta"><span>${pips(x.rating)}</span><span>${esc(x.why)}</span></div>${x.better ? `<p class="note" style="margin:6px 0 0">Stronger: <i>${esc(x.better)}</i></p>` : ''}</div>`).join('')}
-    ${list.length < max ? `<label class="f" for="askq">${list.length ? 'Another question' : 'Your question'}</label>
+    ${(list.length < max && (!list.length || S.askMore)) ? `<label class="f" for="askq">${list.length ? 'Your next question' : 'Your question'}</label>
       <textarea id="askq" class="answer" style="min-height:90px" placeholder="For example: What would success look like in the first 90 days?">${esc(S.draft.askq || '')}</textarea>
       ${answerFoot('askq')}
-      <div class="actionbar"><div class="row">${voiceActions('askq', ['askq', 'Ask'])}</div><button class="link" data-act="finishnow">${list.length ? "That's all, finish the interview" : "I don't have questions, finish"}</button></div>`
-    : `<div class="actions"><button class="btn pen" data-act="finishnow">Finish and see my report</button></div>`}
+      <div class="actionbar"><div class="row">${voiceActions('askq', ['askq', 'Ask'])}</div>${list.length ? '' : `<button class="btn ghost" data-act="finishnow">I don't have any questions</button>`}</div>
+      ${list.length ? `<div class="endbar"><span class="note">Done asking?</span><button class="btn ghost" data-act="finishnow">Finish the interview and see my report</button></div>` : ''}`
+    : `<div class="endbar"><div class="row"><button class="btn pen" data-act="finishnow">Finish the interview and see my report</button>${list.length < max ? `<button class="btn ghost" data-act="askmore">Ask another question</button>` : ''}</div>${list.length >= max ? '<span class="note">That\'s the most questions there\'s usually time for.</span>' : ''}</div>`}
   </div>`;
 }
 const sessionCount = () => S.profile && S.profile.session ? S.answers.filter(a => a.result && a.session === S.profile.session).length : 0;
@@ -1617,16 +1620,17 @@ function makeReport(sid, r){
     at:Date.now()};
 }
 async function finishInterview(){
-  if(S.pending && Object.keys(S.pending).length){ await run('Scoring your answers…', async () => { await Promise.all(Object.values(S.pending)); }); }
+  const bye = S.closing ? "Thanks for your time today. That's the end of the interview. " : '';
+  if(S.pending && Object.keys(S.pending).length){ S.view = 'report'; await run(bye + 'Scoring your answers…', async () => { await Promise.all(Object.values(S.pending)); }); }
   const sid = S.profile?.session || 'earlier';
   if(S.asks && S.asks[sid]) S.reportAsks = S.reportAsks || {};
   const list = sessAnswers(sid);
   if(!list.length){ S.error = S.failedScores ? "Your answers couldn't be scored (the free AI limit may be used up). Try again later." : 'Answer at least one question before finishing the interview.'; S.step = 'setup'; S.view = 'practice'; return render(); }
-  S.reportSid = sid; S.view = 'report'; track('finish', {n:list.length});
+  S.reportSid = sid; S.view = 'report'; S.closing = false; track('finish', {n:list.length});
   if(S.profile){ sessInit(); saveProfile(); }
   S.step = 'setup';
   if(!S.reports[sid] && list.length){
-    await run('Writing your interview report…', async () => {
+    await run(bye + 'Writing your interview report…', async () => {
       let r = null; try { r = await ask(reportPrompt(list), 'default'); } catch(e){ r = null; }
       if(r && r.headline){ S.reports[sid] = makeReport(sid, r); persist('rep_'+sid, S.reports[sid]); }
     });
@@ -1837,7 +1841,8 @@ document.addEventListener('click', e => {
   if(act==='delyes') return deleteAll();
   if(act==='nudgeno'){ S.nudgeOff = {...(S.nudgeOff||{}), [S.profile?.session]: true}; return render(); }
   if(act==='finish') return endInterview();
-  if(act==='finishnow'){ S.askDone = true; return finishInterview(); }
+  if(act==='finishnow'){ S.askDone = true; S.askMore = false; S.closing = true; return finishInterview(); }
+  if(act==='askmore'){ S.askMore = true; render(); const el = document.getElementById('askq'); if(el) el.focus(); return; }
   if(act==='askq') return askSubmit();
   if(act==='review'){ const a = S.answers.find(x => x.id === b.dataset.i); if(!a) return; S.reviewing = S.reportSid; S.cur = a; S.view = 'practice'; S.step = 'feedback'; render(); window.scrollTo(0,0); return; }
   if(act==='backreport'){ S.view = 'report'; S.reportSid = S.reviewing; S.reviewing = null; S.cur = null; S.step = 'setup'; render(); return; }
