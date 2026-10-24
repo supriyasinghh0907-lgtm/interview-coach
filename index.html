@@ -171,6 +171,11 @@ details.more summary{color:var(--muted);font-weight:500}
 .stepnav{gap:16px;font-size:.92rem}
 button.brand{border:0;background:none;padding:0;margin:0;text-align:left;cursor:pointer;color:inherit;font:inherit;font-weight:700;font-size:1.35rem;letter-spacing:-0.01em}
 button.brand small{display:block}
+.itimer{font-variant-numeric:tabular-nums;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:var(--sheet)}
+.itimer.low{color:var(--warn);border-color:var(--warn)}
+.qtype{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);font-size:.72rem;letter-spacing:.04em;color:var(--pen);text-transform:none;vertical-align:1px}
+.askitem{border-top:1px solid var(--line);padding:12px 0}
+.askq{margin:0 0 6px} .aska{margin:0 0 6px;font-family:var(--serif)}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
@@ -242,7 +247,7 @@ Nice to have: experience running A/B tests, or building something for a communit
 const S = {
   view:'practice', step:'setup', busy:null, error:null, notice:null,
   sample:undefined, store:null, saving:true, loaded:false,
-  profile:null, cur:null, answers:[], draft:{}, setup:{type:'Behavioral', level:'Entry', selfScore:true, voice:true, autoRead:true},
+  profile:null, cur:null, answers:[], draft:{}, setup:{type:'Behavioral', length:30, mode:'real', round:'hiring', level:'Entry', selfScore:true, voice:true, autoRead:true},
   rec:{}, speakNext:null,
   disputeOpen:null, focus:null, cal:[], calOn:false, blind:true, r2:false, calRun:null, dl:null,
   rubric:null, wq:Promise.resolve()
@@ -441,7 +446,7 @@ ${resume}
 Do three things.
 1. List the 5 to 7 most important requirements this job description asks for, each a short plain-language phrase under 12 words.
 2. List the factual claims in the resume as short bullets: roles, employers, projects, tools, and every number or metric copied exactly. Up to 30 bullets. Add nothing that is not written in the resume.
-3. Write the FIRST interview question a sharp, fair interviewer for this role would ask. Interview style: ${S.setup.type}. Candidate level: ${S.setup.level}. Target the single most important requirement. Make it specific to this candidate by referencing a real project, role or claim from the resume where it fits naturally. One question that asks one thing, under 35 words, not a multi-part list. Behavioral style means a past situation. Role-specific style means a question that tests a core skill of this particular job, the way its hiring manager would. Mixed means either.
+3. Write the FIRST question of the interview, as ${roundOf(S.setup.length || 30).persona}. ${QTYPES.intro.how} Candidate level: ${S.setup.level}. One question, under 40 words.
 
 Reply with only JSON in this shape:
 {"role":"job title","company":"company name or empty string","requirements":[{"id":"r1","text":"..."}],"facts":["..."],"first_question":{"question":"...","requirement_ids":["r1"],"kind":"behavioral|role-specific|technical|motivation","angle":"what this question tests, under 12 words"}}`;
@@ -450,9 +455,10 @@ Reply with only JSON in this shape:
 function questionPrompt(){
   const p = S.profile, skipped = p.skipped || [], asked = [...new Set([...S.answers.map(a=>a.q.question), ...skipped.map(x=>x.question)])];
   const cov = (p.setup.requirements||[]).map(r=>`${r.id}: ${S.answers.filter(a=>(a.q.requirement_ids||[]).includes(r.id)).length + skipped.filter(x=>(x.requirement_ids||[]).includes(r.id)).length}`).join(', ');
-  return `You are a sharp, fair interviewer for the role of ${p.setup.role || 'this job'}${p.setup.company ? ' at '+p.setup.company : ''}. Interview style: ${p.type}. Candidate level: ${p.level}.
+  const type = nextType(), qt = QTYPES[type] || QTYPES.behavioral, num = (p.sessAsked || 0) + 1, total = (p.sessPlan || []).length;
+  return `You are ${roundOf(p.sessLen || 30).persona}. The role is ${p.setup.role || 'this job'}${p.setup.company ? ' at '+p.setup.company : ''}. You are running a ${lenLong(p.sessLen || 30)} ${roundOf(p.sessLen || 30).name.toLowerCase()}. Candidate level: ${p.level}.
 
-Requirements of the role:
+Job requirements:
 ${reqLines()}
 
 Candidate's resume facts:
@@ -463,13 +469,14 @@ ${asked.length ? asked.map(q=>'- '+q).join('\n') : '- none yet'}
 
 Questions asked per requirement so far: ${cov}
 
-Write ONE interview question.
-${S.focus ? '- Target requirement '+S.focus+'.' : '- Target the requirement with the fewest questions so far.'}
-- Make it specific to this candidate: reference a real project, role or claim from the resume where it fits naturally.
-- Ask what a real interviewer at this level would ask. One question that asks one thing, under 35 words, not a multi-part list.
-- Behavioral style means a past situation. Role-specific style means a question that tests a core skill of this particular job, the way its hiring manager would: for example a product design question for a product manager, a technical problem for an engineer, a pitch or objection for a salesperson, or designing a training program for an enablement role. Mixed means either.
+This is question ${num} of ${total}. Question type: ${qt.label}. ${qt.how}
 
-Reply with only JSON: {"question":"...","requirement_ids":["r2"],"kind":"behavioral|role-specific|technical|motivation","angle":"what this question tests, under 12 words"}`;
+Rules:
+${S.focus ? '- Target requirement '+S.focus+'.' : '- Target the requirement with the fewest questions so far, unless the question type calls for something broader.'}
+- Align it closely with this job description and this candidate's resume, the way a hiring manager who read both would.
+- One question that asks one thing, under 40 words. No multi-part lists.
+
+Reply with only JSON: {"question":"...","requirement_ids":["r2"],"angle":"what this question tests, under 12 words"}`;
 }
 
 function followupPrompt(c){
@@ -512,6 +519,7 @@ function scorePrompt(c){
 Role: ${S.profile.setup.role || 'unspecified'}. Level: ${S.profile.level}. Requirement this question targets: ${reqs || 'general'}.
 
 Question: "${c.q.question}"
+Question type: ${(QTYPES[c.q.type] || {}).label || 'general'}.
 Candidate answer:
 <<<
 ${c.answer}
@@ -538,7 +546,7 @@ EVIDENCE RULE. For each dimension, copy the exact words (5 to 25 words) from the
 SHORT OR NON-ANSWERS. If the answer is very short, off-topic, or the candidate says they don't know, score it honestly (usually 1 or 2), say so plainly and kindly in "fix", and make the stronger version a short model structure the candidate could follow, built from their resume facts, with placeholders for anything you don't know.
 
 STRONGER VERSIONS. Write a stronger answer for EACH question the candidate was asked: the main question, plus the follow-up and second follow-up only if they were asked. Write as the candidate, in first person.
-- Pick the structure that fits the question and name it in "structure". For a question about a past experience ("tell me about a time", "how did you...", "describe a situation"), use STAR: put each part on its own line, starting with "Situation:", "Task:", "Action:" and "Result:". For a product, design or strategy question, use: "Clarify:", "Approach:", "Tradeoffs:", "Measure:". For a motivation question, use: "Why the role:", "Why me:", "Why now:".
+- Pick the structure that fits the question and name it in "structure". For a question about a past experience ("tell me about a time", "how did you...", "describe a situation"), use STAR: put each part on its own line, starting with "Situation:", "Task:", "Action:" and "Result:". For a product, design or strategy question, use: "Clarify:", "Approach:", "Tradeoffs:", "Measure:". For a motivation question, use: "Why the role:", "Why me:", "Why now:". For an opening "walk me through your background" question, use: "Present:", "Past:", "Future:". For an industry question, use: "Point:", "Evidence:", "So what:". A situational or skills question uses: "Clarify:", "Approach:", "Tradeoffs:", "Measure:".
 - Main answer: under 150 words. Each follow-up answer: under 70 words, answering that follow-up directly; it can use the same labels when that helps, or be two or three plain sentences.
 - Use ONLY facts from the candidate's answers and the resume facts. Never invent numbers, names, tools, or outcomes. Where a stronger answer needs a detail the candidate did not give, insert a bracketed placeholder such as [add the % change in retention].
 
@@ -602,8 +610,8 @@ function startSetup(){
     S.profile = {resume, jd, type:S.setup.type, level:S.setup.level, selfScore:S.setup.selfScore, voice:S.setup.voice, autoRead:S.setup.autoRead, setup:r, createdAt:Date.now(), session:'s'+Date.now()};
     saveProfile(); S.editSetup = false;
     track('setup', {style:S.setup.type, level:S.setup.level, voice:!!S.setup.voice, sample:!!S.usedSample});
-    const fq = r.first_question; delete S.profile.setup.first_question; saveProfile();
-    if(fq && fq.question){ S.focus = null; setQuestion({...fq, requirement_ids:(fq.requirement_ids||[]).map(String).filter(id=>r.requirements.some(x=>x.id===id))}); }
+    const fq = r.first_question; delete S.profile.setup.first_question; sessInit(); saveProfile();
+    if(fq && fq.question){ S.focus = null; setQuestion({...fq, type:'intro', requirement_ids:(fq.requirement_ids||[]).map(String).filter(id=>r.requirements.some(x=>x.id===id))}); }
     else await newQuestion();
   });
 }
@@ -611,18 +619,23 @@ function startSetup(){
 function setQuestion(q){
   S.paused = null;
   if(!q || !q.question) throw new Error("Couldn't write a question. Try again.");
-  S.cur = {id:'a'+Date.now(), q:{question:String(q.question), requirement_ids:(q.requirement_ids||[]).map(String), kind:String(q.kind||''), angle:String(q.angle||'')}, attempt:1};
+  const type = q.type || (S.profile ? nextType() : 'behavioral');
+  S.cur = {id:'a'+Date.now(), q:{question:String(q.question), requirement_ids:(q.requirement_ids||[]).map(String), kind:type, type, angle:String(q.angle||'')}, attempt:1, num:(S.profile && S.profile.sessAsked || 0) + 1};
+  if(S.profile){ ensureSess(); S.profile.sessAsked = (S.profile.sessAsked || 0) + 1; saveProfile(); }
   S.draft.answer = ''; S.draft.follow = ''; S.step = 'question'; S.view = 'practice'; S.rec = {}; track('question', {kind:S.cur.q.kind}); S.speakNext = S.cur.q.question;
 }
 async function newQuestion(){
+  ensureSess();
+  const type = nextType();
   const q = await ask(questionPrompt(), 'default');
+  if(q) q.type = type;
   S.focus = null;
   setQuestion(q);
 }
 const nextQuestion = () => run('Writing your next question…', newQuestion);
 
 function retry(){
-  const prev = S.cur;
+  const prev = S.cur; S.reviewing = null;
   S.cur = {id:'a'+Date.now(), q:prev.q, attempt:(prev.attempt||1)+1, retryOf:prev.retryOf || prev.id};
   S.draft.answer = ''; S.draft.follow = ''; S.step = 'question'; S.error = null; S.rec = {}; S.speakNext = S.cur.q.question; render();
 }
@@ -682,11 +695,19 @@ function submitFollow2(){
   if(S.rec.follow2 && S.rec.follow2.raw.trim()) S.cur.delivery = {...(S.cur.delivery||{}), follow2: delivery(S.rec.follow2)};
   S.error = null; afterFollowups(); render();
 }
-function afterFollowups(){ if(S.profile.selfScore){ S.step = 'self'; } else { S.step = 'scoring'; setTimeout(score, 0); } }
+function afterFollowups(){
+  if(isReal() && !S.cur.retryOf){ S.cur.self = {}; bgScore(S.cur); S.step = 'advancing'; setTimeout(goNext, 0); return; }
+  if(S.profile.selfScore){ S.step = 'self'; } else { S.step = 'scoring'; setTimeout(score, 0); }
+}
 
 function score(){
   run('Scoring against the rubric and checking its evidence…', async () => {
-    const c = S.cur;
+    await scoreAnswer(S.cur);
+    S.step = 'feedback';
+  });
+}
+async function scoreAnswer(c){
+  {
     const r = await ask(scorePrompt(c), 'default');
     if(!r || !r.scores) throw new Error("The scoring came back incomplete. Try again.");
     c.result = {
@@ -703,8 +724,14 @@ function score(){
     saveAnswer(c);
     { const sc = c.result.scores, ev = DIMS.filter(d=>sc[d.k].evidence), sd = DIMS.filter(d=>c.self && c.self[d.k]!=null && sc[d.k].score!=null);
       track('scored', {avg: avg(DIMS.map(d=>sc[d.k].score).filter(v=>v!=null)), quotes:ev.length, quotesOk:ev.filter(d=>sc[d.k].verified).length, lowConf:DIMS.filter(d=>sc[d.k].confidence==='low').length, flags:(c.result.flags||[]).length + (c.result.nameFlags||[]).length, selfN:sd.length, selfAgree:sd.filter(d=>Math.abs(c.self[d.k]-sc[d.k].score)<=1).length, second:!!c.followAnswer2}); }
-    S.step = 'feedback';
-  });
+  }
+}
+function bgScore(c){
+  S.pending = S.pending || {};
+  S.pending[c.id] = (async () => {
+    for(let t = 0; t < 2; t++){ try { await scoreAnswer(c); return; } catch(e){ if(/limit|turned off|isn't available|expired/i.test(e.message || '')) break; } }
+    c.scoreFailed = true; S.failedScores = (S.failedScores || 0) + 1;
+  })().finally(() => { if(S.pending) delete S.pending[c.id]; });
 }
 
 function saveDispute(dim){
@@ -828,12 +855,12 @@ const mmss = ms => { const x = Math.round((ms||0)/1000); return Math.floor(x/60)
 
 /* ---------- views ---------- */
 function stepper(){
-  const order = ['setup','question','followup','feedback'];
+  const order = isReal() ? ['question','followup','askback'] : ['question','followup','feedback','askback'];
   const cur = (S.step === 'self' || S.step === 'scoring') ? 'feedback' : S.step === 'followup2' ? 'followup' : S.step, ci = order.indexOf(cur);
-  const names = {setup:'Setup', question:'Question', followup:'Follow-up', feedback:'Feedback'};
+  const names = {question:'Question', followup:'Follow-up', feedback:'Feedback', askback:'Your questions'};
   const ol = `<ol class="steps" aria-label="Interview progress">${order.map((s,i)=>`<li ${i===ci?'data-on aria-current="step"':''} ${i<ci?'data-done':''}><b>${i+1}</b>${names[s]}</li>`).join('')}</ol>`;
   const n = sessionCount();
-  return `<div class="stepbar">${ol}<div class="row stepnav"><span class="note">${n ? `Question ${n + (S.step==='feedback' ? 0 : 1)} of this interview` : 'Question 1 of this interview'}</span><button class="link" data-act="home">Home</button>${n ? `<button class="link" data-act="finish">End interview</button>` : ''}</div></div>`;
+  return `<div class="stepbar">${ol}<div class="row stepnav">${S.profile && S.profile.sessPlan ? `<span class="note">Question ${Math.max(1, S.profile.sessAsked || 0)} of ${S.profile.sessPlan.length}</span><span class="itimer ${sessLeftMs() <= 300000 ? 'low' : ''}" id="itimer" title="Counts only while you're answering">${timerText()}</span>${['feedback','self','scoring','askback'].includes(S.step) ? '<span class="note">Timer paused</span>' : ''}` : `<span class="note">${n ? `Question ${n + (S.step==='feedback' ? 0 : 1)}` : 'Question 1'}</span>`}<button class="link" data-act="home">Home</button>${(n || (S.profile && S.profile.sessAsked)) && S.step !== 'askback' ? `<button class="link" data-act="finish">End interview</button>` : ''}</div></div>`;
 }
 const seg = (act, opts, val) => `<div class="seg" role="group">${opts.map(o=>`<button type="button" data-act="${act}" data-v="${esc(o)}" aria-pressed="${o===val}">${esc(o)}</button>`).join('')}</div>`;
 const pips = n => `<span class="pips" aria-label="${n==null?'not scored':n+' out of 5'}">${[1,2,3,4,5].map(i=>`<span class="pip ${n!=null&&i<=n?'on':''}"></span>`).join('')}</span>`;
@@ -878,8 +905,118 @@ async function deleteAll(){
     track('delete');
   });
 }
+const LENGTHS = [{min:30, label:'30 min'}, {min:60, label:'1 hour'}, {min:105, label:'1 hr 45 min'}];
+const lenLabel = m => (LENGTHS.find(x => x.min === m) || LENGTHS[0]).label;
+const lenLong = m => m === 105 ? '1 hour 45 minute' : m === 60 ? '1 hour' : '30 minute';
+const QCOUNT = {30:5, 60:8, 105:12};
+const ROUNDS = {
+  recruiter: {name:'Recruiter screen', desc:'Background, motivation and your experience, with a behavioral and a situational question. Lighter on deep skills.', persona:"the recruiter for this role, who knows exactly what the hiring manager is looking for",
+    pool:['intro','motivation','resume','behavioral','situational','resume','behavioral','motivation','situational','resume','behavioral','situational']},
+  hiring: {name:'Hiring manager interview', desc:'Every type of question: your work, behavioral, situational and industry, plus core skills in longer interviews.', persona:"the hiring manager for this role: a seasoned expert in this industry who has hired for it many times",
+    pool:['intro','resume','behavioral','situational','industry','craft','resume','behavioral','situational','industry','craft','behavioral']},
+  final: {name:'Final round', desc:'Every type of question at a higher bar, with more skills questions and deeper follow-ups.', persona:"the hiring manager leading the final round for this role: a seasoned industry expert holding a high bar",
+    pool:['intro','craft','resume','behavioral','situational','industry','craft','behavioral','resume','situational','industry','craft']},
+};
+const ROUND_IDS = ['recruiter','hiring','final'];
+const curRound = () => (S.profile && S.profile.sessRound) || S.setup.round || 'hiring';
+const roundOf = () => ROUNDS[curRound()] || ROUNDS.hiring;
+const buildPlan = (round, len) => (ROUNDS[round] || ROUNDS.hiring).pool.slice(0, QCOUNT[len] || 5);
+const isReal = () => ((S.profile && S.profile.sessMode) || S.setup.mode || 'real') === 'real';
+const QTYPES = {
+  intro: {label:'Opening question', how:"Open the interview the way a hiring manager does: ask the candidate to walk you through their background and what brings them to this role, referencing one specific thing on their resume."},
+  resume: {label:'About your work', how:"Ask about specific work the candidate has done that is on their resume: a named project, role or result. Ask how they did it or what they personally owned, connected to a requirement of this job."},
+  behavioral: {label:'Behavioral question', how:"Ask a behavioral question about a real past situation (\"Tell me about a time when...\") that tests one requirement of this role, such as handling conflict, a setback, prioritizing, influencing without authority, or working through ambiguity."},
+  motivation: {label:'Motivation question', how:"Ask why the candidate wants this role at this company and why now, the way a recruiter screens for motivation and fit. Make it specific to this company."},
+  craft: {label:'Skills question', how:"Ask a role-specific skills question that tests the core craft of this job the way its hiring manager would: for example a product design or metrics question for a product manager, a technical problem for an engineer, a pitch or objection for sales, or designing a program for an enablement role."},
+  situational: {label:'Situational question', how:"Ask a situational question: a realistic scenario the candidate would face in this exact role at this company (\"Imagine...\" or \"Suppose...\"), and ask how they would handle it."},
+  industry: {label:'Industry question', how:"Ask an industry question an expert in this field would ask: about this company's market, customers, competitors, trends, regulation, or the key metrics that matter. It should test real understanding of the industry, not trivia."},
+};
+function sessInit(){
+  const L = S.setup.length || 30;
+  S.profile.sessRound = S.setup.round || 'hiring'; S.profile.round = S.profile.sessRound;
+  S.profile.session = 's' + Date.now(); S.profile.sessLen = L; S.profile.sessPlan = buildPlan(S.profile.sessRound, L);
+  S.profile.sessAsked = 0; S.profile.sessElapsed = 0; S.profile.length = L;
+  S.profile.sessMode = S.setup.mode || 'real'; S.profile.mode = S.profile.sessMode; S.askDone = false;
+}
+function ensureSess(){
+  if(!S.profile) return;
+  if(!S.profile.sessPlan){ S.profile.sessLen = S.profile.sessLen || S.setup.length || 30; S.profile.sessRound = S.profile.sessRound || S.setup.round || 'hiring'; S.profile.sessPlan = buildPlan(S.profile.sessRound, S.profile.sessLen); S.profile.sessAsked = S.profile.sessAsked || sessionCount(); S.profile.sessElapsed = S.profile.sessElapsed || 0; }
+}
+const sessLeftMs = () => S.profile ? Math.max(0, (S.profile.sessLen || 30) * 60000 - (S.profile.sessElapsed || 0)) : 0;
+const sessTimeUp = () => !!(S.profile && S.profile.sessPlan && sessLeftMs() <= 0);
+const sessPlanDone = () => !!(S.profile && S.profile.sessPlan && (S.profile.sessAsked || 0) >= S.profile.sessPlan.length);
+const sessOver = () => sessTimeUp() || sessPlanDone();
+const nextType = () => { ensureSess(); const pl = S.profile.sessPlan; return pl[Math.min(S.profile.sessAsked || 0, pl.length - 1)]; };
+const timerText = () => { const ms = sessLeftMs(); if(ms <= 0) return "Time's up"; const t = Math.ceil(ms/1000); return Math.floor(t/60) + ':' + String(t%60).padStart(2,'0') + ' left'; };
+let lastSessSave = 0;
+setInterval(() => {
+  if(!S.profile || !S.profile.sessPlan || S.view !== 'practice' || S.busy || document.hidden) return;
+  if(!['question','followup','followup2'].includes(S.step)) return;
+  const was = sessLeftMs();
+  S.profile.sessElapsed = (S.profile.sessElapsed || 0) + 1000;
+  const el = document.getElementById('itimer'); if(el){ el.textContent = timerText(); el.classList.toggle('low', sessLeftMs() <= 300000); }
+  if(was > 0 && sessLeftMs() <= 0) render();
+  if(Date.now() - lastSessSave > 20000){ lastSessSave = Date.now(); saveProfile(); }
+}, 1000);
+function goNext(){ if(S.profile && sessOver()) return startAskback(); return nextQuestion(); }
+function endInterview(){
+  if(S.step !== 'askback' && !S.askDone && S.profile && (sessionCount() || (S.pending && Object.keys(S.pending).length))) return startAskback();
+  return finishInterview();
+}
+function startAskback(){
+  S.askSid = S.profile.session; S.asks = S.asks || {}; S.asks[S.askSid] = S.asks[S.askSid] || [];
+  S.step = 'askback'; S.view = 'practice'; S.cur = null; S.draft.askq = '';
+  S.speakNext = "That's all the questions I had for you. Do you have any questions for me?";
+  render();
+}
+function askPrompt(q){
+  const p = S.profile, prev = (S.asks[S.askSid] || []).map(x => `Candidate: ${x.q}\nYou: ${x.answer}`).join('\n');
+  return `You are ${roundOf(p.sessLen || 30).persona}. The role is ${p.setup.role || 'this job'}${p.setup.company ? ' at '+p.setup.company : ''}. The interview is ending and you asked the candidate: "Do you have any questions for me?"
+
+Job requirements:
+${reqLines()}
+${prev ? `\nEarlier in this part of the conversation:\n${prev}\n` : ''}
+The candidate asks: "${q}"
+
+Do two things.
+1. Answer it in character, in 2 to 4 sentences, warmly and realistically. You don't know private details of this company, so don't invent specific numbers, names or plans; answer the way a real interviewer would, in honest general terms about the team and role.
+2. As a coach, rate the question from 1 to 5. Strong questions show curiosity about the team's goals, how success is measured, the biggest challenges, or how the role works with others. Weak ones are generic, already answered by the job posting, or about salary and perks this early.
+
+Reply with only JSON: {"answer":"...","rating":4,"why":"one sentence on the rating","better":"a stronger version of their question, or an empty string if it is already strong"}`;
+}
+function askSubmit(){
+  if(S.timer) stopTimer();
+  const v = ($('#askq').value || '').trim();
+  if((v.match(/\S+/g) || []).length < 3){ S.error = 'Type or say your question first.'; return render(); }
+  S.draft.askq = v;
+  run('The interviewer is answering…', async () => {
+    const r = await ask(askPrompt(v), 'default');
+    if(!r || !r.answer) throw new Error("Couldn't get an answer. Try again.");
+    const item = {q:v, answer:String(r.answer), rating:Math.max(1, Math.min(5, Math.round(Number(r.rating) || 3))), why:String(r.why || ''), better:String(r.better || '')};
+    S.asks[S.askSid].push(item); S.draft.askq = ''; S.rec = {};
+    persist('ask_' + S.askSid, {kind:'asks', session:S.askSid, items:S.asks[S.askSid]});
+    S.speakNext = item.answer;
+  });
+}
+function askbackView(){
+  const list = (S.asks && S.asks[S.askSid]) || [], max = 3;
+  return `<div class="sheet">
+    <div class="eyebrow">End of the interview</div>
+    <p class="q">"That's all the questions I had for you. Do you have any questions for me?"</p>
+    ${S.setup.voice ? `<div class="speakctl" id="speakctl">${speakCtl()}</div>` : ''}
+    <p class="note" style="margin-top:0">Ask what you'd really ask. The interviewer answers in character, and the coach rates your question. Asking none is usually a missed chance.</p>
+    ${list.map((x, i) => `<div class="askitem"><p class="askq"><b>You:</b> ${esc(x.q)}</p><p class="aska"><b>Interviewer:</b> ${esc(x.answer)}</p>
+      <div class="meta"><span>${pips(x.rating)}</span><span>${esc(x.why)}</span></div>${x.better ? `<p class="note" style="margin:6px 0 0">Stronger: <i>${esc(x.better)}</i></p>` : ''}</div>`).join('')}
+    ${list.length < max ? `<label class="f" for="askq">${list.length ? 'Another question' : 'Your question'}</label>
+      <textarea id="askq" class="answer" style="min-height:90px" placeholder="For example: What would success look like in the first 90 days?">${esc(S.draft.askq || '')}</textarea>
+      ${answerFoot('askq')}
+      <div class="actionbar"><div class="row">${voiceActions('askq', ['askq', 'Ask'])}</div><button class="link" data-act="finishnow">${list.length ? "That's all, finish the interview" : "I don't have questions, finish"}</button></div>`
+    : `<div class="actions"><button class="btn pen" data-act="finishnow">Finish and see my report</button></div>`}
+  </div>`;
+}
 const sessionCount = () => S.profile && S.profile.session ? S.answers.filter(a => a.result && a.session === S.profile.session).length : 0;
 function goHome(){
+  S.reviewing = null;
   const mid = ['question','followup','followup2','self'].includes(S.step) && S.cur && !S.cur.result;
   S.paused = mid ? S.step : null;
   if(rec){ recWant = false; rec.stop(); }
@@ -889,7 +1026,7 @@ function goHome(){
 }
 function resumePaused(){ S.step = S.paused || 'question'; S.paused = null; S.view = 'practice'; render(); }
 function newInterview(){
-  if(S.profile){ S.profile.session = 's' + Date.now(); saveProfile(); }
+  if(S.profile){ sessInit(); saveProfile(); }
   S.paused = null; S.cur = null; S.view = 'practice'; S.focus = null; S.editSetup = false;
   return nextQuestion();
 }
@@ -899,17 +1036,21 @@ function setupView(){
     const n = sessionCount(), total = S.answers.filter(a=>a.result).length;
     const primary = S.paused ? `<button class="btn pen" data-act="resume">Continue your current question</button>`
       : `<button class="btn pen" data-act="next" ${S.busy?'disabled':''}>${n ? 'Next question' : 'Start interview'}</button>`;
-    const status = S.paused ? 'You left in the middle of a question.' : n ? `This interview: ${n} ${n===1?'question':'questions'} answered.` : 'A new interview is ready to start.';
+    ensureSess();
+    const tl = Math.ceil(sessLeftMs()/60000), plan = (p.sessPlan || []).length;
+    const status = S.paused ? `You left in the middle of question ${p.sessAsked || 1} of ${plan}. ${tl} min left.` : n ? `This interview: ${n} ${n===1?'question':'questions'} answered, ${Math.max(0, plan - (p.sessAsked||0))} to go, ${tl} min left.` : 'A new interview is ready to start.';
     return `<div class="sheet">
       <div class="eyebrow">Your practice interview</div>
       <h2>${esc(p.setup.role || 'Your target role')}${p.setup.company ? ' at '+esc(p.setup.company) : ''}</h2>
-      <p class="note" style="margin:0">${esc(p.type)} questions, ${esc(p.level)} level, ${S.setup.voice ? 'spoken answers' : 'typed answers'}.</p>
+      <p class="note" style="margin:0">${roundOf(p.sessLen || S.setup.length || 30).name}, ${lenLabel(p.sessLen || S.setup.length || 30)}. ${isReal() ? 'Real interview, feedback at the end' : 'Practice mode, feedback after each answer'}. ${esc(p.level)} level, ${S.setup.voice ? 'spoken answers' : 'typed answers'}.</p>
       <p style="margin:12px 0 0">${status}${total > n ? ` <span class="note">${total} answered in all your interviews.</span>` : ''}</p>
+      ${(!n && !S.paused) ? `<div class="optrow" style="margin-top:6px"><div><label class="f">Interview round</label>${seg('round', ROUND_IDS.map(id=>ROUNDS[id].name), roundOf().name)}<p class="note" style="margin:6px 0 0">${roundOf().desc}</p></div><div><label class="f">Interview length</label>${seg('len', LENGTHS.map(x=>x.label), lenLabel(p.sessLen || S.setup.length || 30))}<p class="note" style="margin:6px 0 0">${QCOUNT[p.sessLen || S.setup.length || 30]} questions</p></div><div><label class="f">Mode</label>${seg('pmode2', ['Real interview','Practice mode'], (S.setup.mode || 'real') === 'real' ? 'Real interview' : 'Practice mode')}</div></div>` : ''}
       <div class="actions">${primary}${n ? `<button class="btn ghost" data-act="finish">Finish and see report</button>` : ''}${(n || S.paused) ? `<button class="btn ghost" data-act="newinterview">Start a new interview</button>` : ''}</div>
       <p class="note" style="margin-top:18px">Practicing for a different job? <button class="link" data-act="editsetup">Change resume or job</button></p>
       ${deleteBlock()}
     </div>`;
   }
+  const pchoice = (v, title, desc) => `<button type="button" class="choice" data-act="pmode" data-v="${v}" aria-pressed="${(S.setup.mode || 'real') === v}"><b>${title}</b><span>${desc}</span></button>`;
   const choice = (v, title, desc) => `<button type="button" class="choice" data-act="mode" data-v="${v}" aria-pressed="${(v==='voice')===!!S.setup.voice}"><b>${title}</b><span>${desc}</span></button>`;
   return `<div class="sheet">
     <h2>${p ? 'Change your resume or job' : 'Set up your practice interview'}</h2>
@@ -931,12 +1072,15 @@ function setupView(){
     <div class="choices">${choice('type','Type my answers','Write each answer in a text box.')}${choice('voice','Speak my answers','Questions are read aloud and you answer out loud. Adds pace and filler-word feedback. Chrome, Edge or Safari.')}</div>
     ${S.setup.voice ? `<label class="check" style="margin-top:10px"><input type="checkbox" id="autoread" ${S.setup.autoRead?'checked':''}><span>Read each question aloud automatically <span class="note">(you can pause, stop or replay it)</span></span></label>` : ''}
 
+    <label class="f">4. How do you want to practice?</label>
+    <div class="choices">${pchoice('real','Real interview','Like the real thing: the timer runs, the interviewer moves on, and all feedback comes at the end.')}${pchoice('practice','Practice mode','Feedback after every answer, and the timer pauses while you read it.')}</div>
     <div class="optrow">
-      <div><label class="f">Question style</label>${seg('type',['Behavioral','Role-specific','Mixed'],S.setup.type)}</div>
+      <div><label class="f">Interview round</label>${seg('round', ROUND_IDS.map(id=>ROUNDS[id].name), ROUNDS[S.setup.round || 'hiring'].name)}<p class="note" style="margin:6px 0 0">${ROUNDS[S.setup.round || 'hiring'].desc}</p></div>
+      <div><label class="f">Interview length</label>${seg('len', LENGTHS.map(x=>x.label), lenLabel(S.setup.length || 30))}<p class="note" style="margin:6px 0 0">${QCOUNT[S.setup.length || 30]} questions, then your questions for the interviewer.</p></div>
       <div><label class="f">Level</label>${seg('level',['Entry','Mid','Senior'],S.setup.level)}</div>
     </div>
     <details class="more"><summary>More options</summary>
-      <label class="check"><input type="checkbox" id="selfscore" ${S.setup.selfScore?'checked':''}><span><b>Score myself before seeing feedback</b><br><span class="note">Shows where the coach agrees with you, and where to trust it less.</span></span></label>
+      <label class="check"><input type="checkbox" id="selfscore" ${S.setup.selfScore?'checked':''}><span><b>Score myself before seeing feedback</b><br><span class="note">Practice mode only. Shows where the coach agrees with you, and where to trust it less.</span></span></label>
     </details>
 
     <div class="actions startbar">
@@ -948,8 +1092,8 @@ function setupView(){
 
 function questionBlock(c, small){
   const reqs = reqText(c.q.requirement_ids);
-  const sid = S.profile && S.profile.session, n = sid ? sessAnswers(sid).length + (c.result ? 0 : 1) : null;
-  return `<div class="qhead"><span class="eyebrow" style="margin:0">${n ? 'Question '+n : 'Question'}${c.attempt>1?`, attempt ${c.attempt}`:''}</span>${!small && S.setup.voice ? `<span class="speakctl" id="speakctl">${speakCtl()}</span>` : ''}</div>
+  const n = c.num || null, qt = QTYPES[c.q.type];
+  return `<div class="qhead"><span class="eyebrow" style="margin:0">${n ? 'Question '+n : 'Question'}${c.attempt>1?`, attempt ${c.attempt}`:''}${qt ? ` <span class="qtype">${qt.label}</span>` : ''}</span>${!small && S.setup.voice ? `<span class="speakctl" id="speakctl">${speakCtl()}</span>` : ''}</div>
   <p class="q ${small?'small':''}">${esc(c.q.question)}</p>
   ${!small && reqs.length ? `<p class="qfocus">Checks: ${reqs.map(esc).join('; ')}</p>` : ''}`;
 }
@@ -964,7 +1108,7 @@ function answerFoot(id, lo, hi){
 }
 function questionView(){
   const c = S.cur;
-  return `<div class="sheet">${questionBlock(c)}
+  return `<div class="sheet">${sessTimeUp() ? `<p class="warnline">Time's up. Finish this answer, then you'll see your report.</p>` : ''}${questionBlock(c)}
     <label class="f" for="answer">Your answer</label>
     <textarea id="answer" class="answer" placeholder="${S.setup.voice ? 'Press Start speaking and answer out loud. Your words appear here, and you can fix any mistakes before submitting.' : 'Type your answer as you would say it out loud.'}">${esc(S.draft.answer||'')}</textarea>
     ${answerFoot('answer')}
@@ -1019,7 +1163,7 @@ function nameFlags(rewrite, source){
   }
   return [...out].slice(0, 8);
 }
-function labelParts(h){ return h.replace(/(^|\n)\s*(Situation|Task|Action|Result|Clarify|Approach|Tradeoffs|Measure|Why the role|Why me|Why now):/g, '$1<b class="rwlabel">$2:</b>'); }
+function labelParts(h){ return h.replace(/(^|\n)\s*(Situation|Task|Action|Result|Clarify|Approach|Tradeoffs|Measure|Why the role|Why me|Why now|Present|Past|Future|Point|Evidence|So what):/g, '$1<b class="rwlabel">$2:</b>'); }
 function rewriteHtml(r, flags, names){
   let h = esc(r).replace(/\[([^\]]+)\]/g, '<span class="gap">[$1]</span>');
   for(const n of (names || [])) h = h.replace(new RegExp('\\b' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b(?![^<]*>)', 'g'), `<span class="flag" title="Not found in your answer or resume">${n}</span>`);
@@ -1040,7 +1184,7 @@ function deliveryHtml(c){
   return `<div style="margin-top:26px"><h3>Delivery</h3><p class="note" style="margin:0 0 10px">Measured from your voice and kept separate from the rubric score. Counts are approximate: speech recognition often drops "um" and "uh," and "like" can be a real word.</p>${part('Main answer', D.answer)}${part('Follow-up', D.follow)}${part('Second follow-up', D.follow2)}</div>`;
 }
 function nudgeHtml(){
-  const sid = S.profile && S.profile.session; if(!sid || (S.nudgeOff && S.nudgeOff[sid])) return '';
+  const sid = S.profile && S.profile.session; if(!sid || (S.nudgeOff && S.nudgeOff[sid]) || S.profile.sessPlan) return '';
   const n = sessAnswers(sid).length; if(n < 5) return '';
   return `<div class="banner nudge"><span>You've answered ${n} questions, about the length of a real interview. Want to see how it went overall?</span><span class="row"><button class="btn pen sm" data-act="finish">See my interview report</button><button class="btn ghost sm" data-act="nudgeno">Keep practicing</button></span></div>`;
 }
@@ -1099,7 +1243,10 @@ function feedbackView(){
     ${fl.length ? `<p class="warnline" style="margin-top:12px">Not in your answer or resume: ${fl.map(esc).join(', ')}. Only keep them if they're true.</p>` : ''}
   </div>
   ${deliveryHtml(c) ? `<div class="sheet sec">${deliveryHtml(c).replace('<div style="margin-top:26px">','<div>')}</div>` : ''}
-  <div class="actionbar"><div class="row"><button class="btn pen" data-act="next">Next question</button><button class="btn ghost" data-act="retry">Retry this question</button></div><button class="link" data-act="finish">Finish interview and see report</button></div>`;
+  ${!S.reviewing && sessOver() ? `<div class="banner" style="margin-top:18px">${sessTimeUp() ? "Time's up. That's the end of your interview." : "That was the last question of your interview."} Next, the interviewer will ask if you have questions.</div>` : ''}
+  <div class="actionbar">${S.reviewing ? `<div class="row"><button class="btn pen" data-act="backreport">Back to report</button><button class="btn ghost" data-act="retry">Practice this question again</button></div>` : sessOver()
+    ? `<div class="row"><button class="btn pen" data-act="finish">Continue</button><button class="btn ghost" data-act="retry">Retry this question</button></div>`
+    : `<div class="row"><button class="btn pen" data-act="next">Next question</button><button class="btn ghost" data-act="retry">Retry this question</button></div><button class="link" data-act="finish">End interview and see report</button>`}</div>`;
 }
 
 function progressView(){
@@ -1324,23 +1471,36 @@ Scores: ${DIMS.map(d=>`${d.k} ${a.result.scores[d.k].score ?? 'n/a'}`).join(', '
 Strength: ${a.result.strength}
 Main fix: ${a.result.fix}`).join('\n\n')}
 
+Job requirements:
+${(S.profile && S.profile.setup.requirements || []).map(r=>'- '+r.text).join('\n') || '- not listed'}
+
 Write the report. Look for patterns across answers, not one-off issues. Be specific, honest and encouraging. Refer to answers by number.
 
+Also suggest 4 or 5 strong questions the candidate should ask the interviewer at the end ("Do you have any questions for me?"). Make them specific to this job and company: about the team's priorities, how success is measured in the first months, the biggest challenges, or how the role works with others. Avoid anything the job description already answers, and avoid salary or perks.
+
 Reply with only JSON:
-{"headline":"one sentence overall verdict","strengths":["up to 2 short sentences"],"priorities":[{"title":"short name of what to work on","detail":"one or two sentences on what to change, citing answer numbers","answers":[1]}]}
+{"headline":"one sentence overall verdict","strengths":["up to 2 short sentences"],"priorities":[{"title":"short name of what to work on","detail":"one or two sentences on what to change, citing answer numbers","answers":[1]}],"questions_to_ask":[{"question":"...","why":"what it shows the interviewer, under 15 words"}]}
 Give 2 or 3 priorities, most important first.`;
 }
+function makeReport(sid, r){
+  return {kind:'report', session:sid, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2),
+    priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:(p.answers||[]).map(Number)})),
+    questionsToAsk:(Array.isArray(r.questions_to_ask) ? r.questions_to_ask : []).slice(0,5).map(x => typeof x === 'string' ? {question:x, why:''} : {question:String(x.question||''), why:String(x.why||'')}).filter(x => x.question),
+    at:Date.now()};
+}
 async function finishInterview(){
+  if(S.pending && Object.keys(S.pending).length){ await run('Scoring your answers…', async () => { await Promise.all(Object.values(S.pending)); }); }
   const sid = S.profile?.session || 'earlier';
+  if(S.asks && S.asks[sid]) S.reportAsks = S.reportAsks || {};
   const list = sessAnswers(sid);
-  if(!list.length){ S.error = 'Answer at least one question before finishing the interview.'; return render(); }
+  if(!list.length){ S.error = S.failedScores ? "Your answers couldn't be scored (the free AI limit may be used up). Try again later." : 'Answer at least one question before finishing the interview.'; S.step = 'setup'; S.view = 'practice'; return render(); }
   S.reportSid = sid; S.view = 'report'; track('finish', {n:list.length});
-  if(S.profile){ S.profile.session = 's'+Date.now(); saveProfile(); }
+  if(S.profile){ sessInit(); saveProfile(); }
   S.step = 'setup';
   if(!S.reports[sid] && list.length){
     await run('Writing your interview report…', async () => {
       let r = null; try { r = await ask(reportPrompt(list), 'default'); } catch(e){ r = null; }
-      if(r && r.headline){ S.reports[sid] = {kind:'report', session:sid, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2), priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:(p.answers||[]).map(Number)})), at:Date.now()}; persist('rep_'+sid, S.reports[sid]); }
+      if(r && r.headline){ S.reports[sid] = makeReport(sid, r); persist('rep_'+sid, S.reports[sid]); }
     });
   } else render();
 }
@@ -1366,6 +1526,14 @@ function reportView(){
     <div class="sheet"><h3>Work on these next</h3><ol class="prio">${rep.priorities.map(p=>`<li><b>${esc(p.title)}</b><br>${esc(p.detail)}</li>`).join('')}</ol></div>
     <div class="sheet"><h3>What went well</h3>${rep.strengths.map(t=>`<p style="margin:0 0 10px">${esc(t)}</p>`).join('') || '<p class="note">None noted.</p>'}</div>
   </div>` : ''}
+  <div class="sheet" style="margin-top:18px"><h3>Question by question</h3>
+    <ul class="list">${list.map((a, i) => `<li><span><span class="note">${i+1}. ${esc((QTYPES[a.q.type] || {}).label || 'Question')}</span><br>${esc(a.q.question)}<div class="sub">Change this first: ${esc(a.result.fix)}</div></span><span class="row" style="flex-direction:column;align-items:flex-end;gap:6px"><b>${fmt(ansAvg(a))} / 5</b><button class="link" data-act="review" data-i="${a.id}">See full feedback</button></span></li>`).join('')}</ul>
+    ${S.failedScores ? `<p class="warnline" style="margin-top:8px">Some answers couldn't be scored and aren't listed.</p>` : ''}
+  </div>
+  ${(() => { const asks = (S.asks && S.asks[sid]) || []; return `<div class="sheet" style="margin-top:18px"><h3>Your questions for the interviewer</h3>${asks.length ? asks.map(x => `<div class="askitem"><p class="askq"><b>You asked:</b> ${esc(x.q)}</p><div class="meta"><span>${pips(x.rating)}</span><span>${esc(x.why)}</span></div>${x.better ? `<p class="note" style="margin:6px 0 0">Stronger: <i>${esc(x.better)}</i></p>` : ''}</div>`).join('') : `<p class="warnline" style="margin:0">You didn't ask any questions. Interviewers notice this, so prepare two or three, like the ones below.</p>`}</div>`; })()}
+  ${rep && rep.questionsToAsk && rep.questionsToAsk.length ? `<div class="sheet" style="margin-top:18px"><h3>Questions to ask your interviewer</h3>
+    <p class="note" style="margin-top:0">Most interviews end with "Do you have any questions for me?" These fit this job and company. Pick two or three.</p>
+    <ol class="prio">${rep.questionsToAsk.map(x=>`<li><b>${esc(x.question)}</b>${x.why ? `<br><span class="note">${esc(x.why)}</span>` : ''}</li>`).join('')}</ol></div>` : ''}
   <div class="grid2" style="margin-top:18px">
     <div class="sheet"><h3>Scores by dimension</h3>
       ${dAvg.map(x=>`<div class="bar"><span>${x.d.name}</span><span class="track"><span class="fill" style="width:${x.v==null?0:x.v/5*100}%;display:block"></span></span><b>${fmt(x.v)}</b></div>`).join('')}
@@ -1451,7 +1619,7 @@ function usageView(){
 
 function render(){
   const app = $('#app');
-  const keep = {}; ['resume','jd','answer','follow','follow2'].forEach(id=>{const el=document.getElementById(id); if(el) keep[id]=el.value;});
+  const keep = {}; ['resume','jd','answer','follow','follow2','askq'].forEach(id=>{const el=document.getElementById(id); if(el) keep[id]=el.value;});
   document.querySelectorAll('[data-keep]').forEach(el=>{ keep[el.id] = el.value; });
   Object.assign(S.draft, keep);
   const tab = (v,l) => `<button data-act="view" data-v="${v}" ${S.view===v?'aria-current="page"':''}>${l}</button>`;
@@ -1463,10 +1631,10 @@ function render(){
   else if(S.view==='usage') body = usageView();
   else if(S.view==='report') body = S.busy ? `<div class="sheet">${busyView()}</div>` : reportView();
   else {
-    body = S.step === 'setup' ? '' : stepper();
+    body = (S.step === 'setup' || S.reviewing) ? '' : stepper();
     if(S.busy) body += `<div class="sheet">${busyView()}</div>`;
     else if(S.step==='scoring' && S.error) body += `<div class="sheet"><p>The feedback couldn't be generated.</p><button class="btn pen" data-act="score">Try again</button></div>`;
-    else body += ({setup:setupView, question:questionView, followup:followView, followup2:follow2View, self:selfView, feedback:feedbackView, scoring:()=>`<div class="sheet">${busyView()}</div>`}[S.step])();
+    else body += ({setup:setupView, question:questionView, followup:followView, followup2:follow2View, self:selfView, feedback:feedbackView, scoring:()=>`<div class="sheet">${busyView()}</div>`, advancing:()=>`<div class="sheet"><div class="busy" role="status"><span class="dot"></span>Next question coming up…</div></div>`, askback:askbackView}[S.step])();
   }
   app.innerHTML = `<header class="top"><button type="button" class="brand" data-act="home" title="Go to home">Interview Coach<small>Questions from your resume. Scores that show their evidence.</small></button>
     <nav class="tabs" aria-label="Sections">${tab('practice','Practice')}${tab('progress','Progress')}${tab('about','How scoring works')}${S.calOn?tab('calibrate','Calibrate'):''}${S.isOwner?tab('usage','Usage'):''}</nav></header>
@@ -1508,8 +1676,12 @@ document.addEventListener('click', e => {
   if(act==='type'){ S.setup.type = v; return render(); }
   if(act==='level'){ S.setup.level = v; return render(); }
   if(act==='start') return startSetup();
-  if(act==='next'){ return nextQuestion(); }
-  if(act==='skip'){ track('skip'); if(S.cur && S.profile){ S.profile.skipped = [...(S.profile.skipped||[]), {question:S.cur.q.question, requirement_ids:S.cur.q.requirement_ids||[]}].slice(-25); saveProfile(); } return nextQuestion(); }
+  if(act==='next'){ return goNext(); }
+  if(act==='pmode' || act==='pmode2'){ S.setup.mode = (v === 'practice' || v === 'Practice mode') ? 'practice' : 'real'; if(S.profile){ S.profile.mode = S.setup.mode; if(!sessionCount() && !S.paused){ S.profile.sessMode = S.setup.mode; } saveProfile(); } return render(); }
+  if(act==='round'){ const id = ROUND_IDS.find(k => ROUNDS[k].name === v) || 'hiring'; S.setup.round = id;
+    if(S.profile){ S.profile.round = id; if(!sessionCount() && !S.paused){ S.profile.sessRound = id; S.profile.sessPlan = buildPlan(id, S.profile.sessLen || S.setup.length || 30); } saveProfile(); } return render(); }
+  if(act==='len'){ S.setup.length = (LENGTHS.find(x => x.label === v) || LENGTHS[0]).min; if(S.profile){ S.profile.length = S.setup.length; if(!sessionCount() && !S.paused){ S.profile.sessLen = S.setup.length; S.profile.sessPlan = buildPlan(curRound(), S.setup.length); saveProfile(); } } return render(); }
+  if(act==='skip'){ track('skip'); if(S.cur && S.profile){ S.profile.skipped = [...(S.profile.skipped||[]), {question:S.cur.q.question, requirement_ids:S.cur.q.requirement_ids||[]}].slice(-25); saveProfile(); } return goNext(); }
   if(act==='answer') return submitAnswer();
   if(act==='follow') return submitFollow();
   if(act==='follow2') return submitFollow2();
@@ -1518,7 +1690,7 @@ document.addEventListener('click', e => {
   if(act==='savekey'){ const k = ($('#apikey').value || '').trim(); if(k.length < 20){ S.error = "That doesn't look like a full API key. Copy it again from Google AI Studio."; return render(); } setKey(k); return render(); }
   if(act==='clearkey'){ setKey(''); return render(); }
   if(act==='usedictation'){ S.micBlocked = true; return render(); }
-  if(act==='listen') return speak(S.step==='followup' ? S.cur.followup : S.step==='followup2' ? S.cur.followup2 : S.cur.q.question);
+  if(act==='listen') return speak(S.step==='askback' ? "Do you have any questions for me?" : S.step==='followup' ? S.cur.followup : S.step==='followup2' ? S.cur.followup2 : S.cur.q.question);
   if(act==='tts-pause'){ try { speechSynthesis.pause(); } catch(e){} S.tts = 'paused'; return ttsUpdate(); }
   if(act==='tts-resume'){ try { speechSynthesis.resume(); } catch(e){} S.tts = 'speaking'; return ttsUpdate(); }
   if(act==='tts-stop') return ttsStop();
@@ -1536,12 +1708,16 @@ document.addEventListener('click', e => {
   if(act==='delno'){ S.confirmDelete = false; return render(); }
   if(act==='delyes') return deleteAll();
   if(act==='nudgeno'){ S.nudgeOff = {...(S.nudgeOff||{}), [S.profile?.session]: true}; return render(); }
-  if(act==='finish') return finishInterview();
+  if(act==='finish') return endInterview();
+  if(act==='finishnow'){ S.askDone = true; return finishInterview(); }
+  if(act==='askq') return askSubmit();
+  if(act==='review'){ const a = S.answers.find(x => x.id === b.dataset.i); if(!a) return; S.reviewing = S.reportSid; S.cur = a; S.view = 'practice'; S.step = 'feedback'; render(); window.scrollTo(0,0); return; }
+  if(act==='backreport'){ S.view = 'report'; S.reportSid = S.reviewing; S.reviewing = null; S.cur = null; S.step = 'setup'; render(); return; }
   if(act==='newinterview') return newInterview();
   if(act==='home') return goHome();
   if(act==='resume') return resumePaused();
-  if(act==='openreport'){ S.reportSid = b.dataset.s; S.view = 'report'; if(!S.reports[b.dataset.s]){ const list = sessAnswers(b.dataset.s); return run('Writing your interview report…', async () => { let r = null; try { r = await ask(reportPrompt(list), 'default'); } catch(e){} if(r && r.headline){ S.reports[b.dataset.s] = {kind:'report', session:b.dataset.s, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2), priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:[]})), at:Date.now()}; persist('rep_'+b.dataset.s, S.reports[b.dataset.s]); } }); } return render(); }
-  if(act==='regenrep'){ delete S.reports[S.reportSid]; b.dataset.s = S.reportSid; const list = sessAnswers(S.reportSid); return run('Writing your interview report…', async () => { const r = await ask(reportPrompt(list), 'default'); if(r && r.headline){ S.reports[S.reportSid] = {kind:'report', session:S.reportSid, headline:String(r.headline), strengths:(r.strengths||[]).map(String).slice(0,2), priorities:(r.priorities||[]).slice(0,3).map(p=>({title:String(p.title||''), detail:String(p.detail||''), answers:[]})), at:Date.now()}; persist('rep_'+S.reportSid, S.reports[S.reportSid]); } }); }
+  if(act==='openreport'){ S.reportSid = b.dataset.s; S.view = 'report'; if(!S.reports[b.dataset.s]){ const list = sessAnswers(b.dataset.s); return run('Writing your interview report…', async () => { let r = null; try { r = await ask(reportPrompt(list), 'default'); } catch(e){} if(r && r.headline){ S.reports[b.dataset.s] = makeReport(b.dataset.s, r); persist('rep_'+b.dataset.s, S.reports[b.dataset.s]); } }); } return render(); }
+  if(act==='regenrep'){ delete S.reports[S.reportSid]; b.dataset.s = S.reportSid; const list = sessAnswers(S.reportSid); return run('Writing your interview report…', async () => { const r = await ask(reportPrompt(list), 'default'); if(r && r.headline){ S.reports[S.reportSid] = makeReport(S.reportSid, r); persist('rep_'+S.reportSid, S.reports[S.reportSid]); } }); }
   if(act==='retryq'){ const a = S.answers.find(x=>x.id===b.dataset.i); if(!a) return; S.cur = a; S.view = 'practice'; return retry(); }
   if(act==='practicereq'){ S.focus = b.dataset.r; S.view = 'practice'; return nextQuestion(); }
   if(act==='calon'){ S.calOn = true; S.view = 'calibrate'; return render(); }
@@ -1582,11 +1758,12 @@ document.addEventListener('keydown', e => {
         if(d.id === 'profile'){ S.profile = x; }
         else if(d.id === 'rubric' && x.current){ S.rubric = {current:x.current, history:x.history||[]}; }
         else if(x.kind === 'report' && x.session){ S.reports[x.session] = x; }
+        else if(x.kind === 'asks' && x.session){ S.asks = S.asks || {}; S.asks[x.session] = x.items || []; }
         else if(x.kind === 'cal'){ S.cal.push(x); S.calOn = true; }
         else if(x.kind === 'answer' && x.result){ S.answers.push(x); }
       });
       S.answers.sort((a,b)=>a.createdAt-b.createdAt); S.cal.sort((a,b)=>a.createdAt-b.createdAt);
-      if(S.profile){ S.setup.type = S.profile.type || S.setup.type; S.setup.level = S.profile.level || S.setup.level; if(S.profile.selfScore!=null) S.setup.selfScore = S.profile.selfScore; if(S.profile.voice!=null) S.setup.voice = S.profile.voice; if(S.profile.autoRead!=null) S.setup.autoRead = S.profile.autoRead; }
+      if(S.profile){ S.setup.type = S.profile.type || S.setup.type; S.setup.level = S.profile.level || S.setup.level; if(S.profile.selfScore!=null) S.setup.selfScore = S.profile.selfScore; if(S.profile.voice!=null) S.setup.voice = S.profile.voice; if(S.profile.length) S.setup.length = S.profile.length; if(S.profile.mode) S.setup.mode = S.profile.mode; if(S.profile.round) S.setup.round = S.profile.round; if(S.profile.autoRead!=null) S.setup.autoRead = S.profile.autoRead; }
     } catch(e){}
   }
   S.saveNote = S.store ? (CONFIG.PROXY_URL ? "Free demo with a daily usage limit. Your answers and reports are saved only in this browser." : "Free demo on Google's Gemini free tier. Google may use what you send to improve its models, and people may review it. Everything else stays in this browser.") : "Your browser isn't allowing this page to save, so your progress lasts until you close the page.";
