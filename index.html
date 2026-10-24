@@ -176,6 +176,13 @@ button.brand small{display:block}
 .qtype{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);font-size:.72rem;letter-spacing:.04em;color:var(--pen);text-transform:none;vertical-align:1px}
 .askitem{border-top:1px solid var(--line);padding:12px 0}
 .askq{margin:0 0 6px} .aska{margin:0 0 6px;font-family:var(--serif)}
+.samples{display:inline-flex;flex-wrap:wrap;gap:6px}
+.chipbtn{border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:4px 12px;font-size:.88rem;cursor:pointer}
+.chipbtn:hover{border-color:var(--pen);color:var(--pen)}
+.chipbtn:disabled{opacity:.5;cursor:not-allowed}
+.answer.code,.codeblock,.codeans{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92rem;line-height:1.55;tab-size:4}
+.answer.code{min-height:260px;white-space:pre;overflow-x:auto}
+.codeblock{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
@@ -244,6 +251,114 @@ What we're looking for:
 - Evidence of shipping something with a team
 - A genuine interest in games, creators, or online communities
 Nice to have: experience running A/B tests, or building something for a community you belong to.`;
+const SAMPLES = {
+  pm: {label:'Product manager', resume:SAMPLE_RESUME, jd:SAMPLE_JD},
+  swe: {label:'Software engineer', resume:`Priya Nair
+Software Engineer, Brightline Logistics (2022 to present)
+- Built a shipment-tracking API in Go serving 3 million requests a day; cut p95 latency from 800 ms to 220 ms by adding a Redis cache
+- Led the migration of a monolith billing service to three microservices on Kubernetes with zero downtime
+- On-call for the payments team; wrote the runbook that cut average incident time from 90 to 35 minutes
+Software Engineering Intern, Fernhill Bank (Summer 2021)
+- Wrote React components for the mobile banking dashboard used by 200,000 customers
+Education: B.S. Computer Science, 2022
+Skills: Go, Python, TypeScript, React, PostgreSQL, Redis, Kubernetes, AWS`, jd:`Software Engineer II, Platform
+Harborline is a fintech company that processes payments for 40,000 small businesses.
+What you'll do:
+- Design, build and run backend services that handle millions of transactions a day
+- Improve reliability, latency and cost across our payment platform
+- Take part in on-call and lead incident reviews
+- Review code and mentor newer engineers
+What we're looking for:
+- 2 to 5 years building production backend systems
+- Strong in at least one of Go, Java or Python
+- Experience with distributed systems, databases and caching
+- Clear communication with product managers and other teams
+Nice to have: payments or financial services experience; Kubernetes.`},
+  sales: {label:'Sales', resume:`Marcus Bell
+Account Executive, Clearpath Software (2021 to present)
+- Closed $1.4M in new annual recurring revenue in 2023, 118% of quota, selling HR software to companies with 200 to 2,000 employees
+- Built a referral program with customer success that sourced 30% of my pipeline
+- Shortened the average sales cycle from 74 to 52 days by introducing a mutual action plan
+Sales Development Representative, Clearpath Software (2019 to 2021)
+- Booked 25 qualified meetings a month through cold calls, email and LinkedIn; promoted after 18 months
+Education: B.A. Communications, 2019
+Skills: Salesforce, Outreach, Gong, MEDDICC, discovery and negotiation`, jd:`Mid-Market Account Executive
+Lumio sells scheduling software to clinics and healthcare practices.
+What you'll do:
+- Own the full sales cycle for mid-market clinics, from discovery to close
+- Build and manage your own pipeline alongside an SDR
+- Run product demos and handle objections on price, security and change management
+- Forecast accurately and hit a quarterly new revenue target
+What we're looking for:
+- 2+ years closing B2B SaaS deals with a track record of hitting quota
+- Strong discovery, negotiation and presentation skills
+- Experience with a sales methodology like MEDDICC or Challenger
+- Comfort with CRM hygiene and forecasting
+Nice to have: selling into healthcare.`},
+  marketing: {label:'Marketing', resume:`Elena Ruiz
+Marketing Manager, Sproutly (2021 to present)
+- Owned paid social and email for a plant-delivery startup; grew monthly revenue from email 2.3x in one year
+- Launched a creator partnership program with 40 creators that drove 12,000 first orders
+- Ran weekly A/B tests on landing pages; lifted conversion from 2.1% to 3.4%
+Marketing Coordinator, Northwind Outdoors (2019 to 2021)
+- Managed the content calendar and wrote product launch emails for a 150,000-person list
+Education: B.B.A. Marketing, 2019
+Skills: Meta Ads, Google Ads, Klaviyo, GA4, Figma, copywriting`, jd:`Growth Marketing Manager
+Kettle is a direct-to-consumer coffee subscription brand.
+What you'll do:
+- Own acquisition channels including paid social, search and partnerships
+- Plan and run experiments to lower customer acquisition cost and raise retention
+- Work with design and product on landing pages, offers and onboarding
+- Report weekly on channel performance and budget
+What we're looking for:
+- 3+ years in growth or performance marketing for a consumer brand
+- Hands-on with paid social, email and analytics tools
+- A test-and-learn mindset and strong judgment with data
+- Clear writing and storytelling
+Nice to have: subscription business experience.`},
+  data: {label:'Data analyst', resume:`Jordan Lee
+Data Analyst, Meridian Retail (2022 to present)
+- Built a weekly sales dashboard in Tableau used by 60 store managers across 4 regions
+- Wrote a SQL model that found $2M a year in markdown waste; recommendations adopted for the next season
+- Partnered with merchandising to design an A/B test on store layouts
+Analytics Intern, Civic Data Lab (Summer 2021)
+- Cleaned and analyzed city transit data in Python for a public report
+Education: B.S. Statistics, 2022
+Skills: SQL, Python (pandas), Tableau, Excel, A/B testing, dbt`, jd:`Data Analyst, Customer Insights
+Fieldstone is an online grocery company serving 500,000 households.
+What you'll do:
+- Turn customer and order data into insights that guide product and marketing decisions
+- Build and maintain dashboards and self-serve data models
+- Design experiments and explain results to non-technical stakeholders
+- Answer ad-hoc questions quickly and accurately
+What we're looking for:
+- 1 to 3 years of analytics experience
+- Strong SQL and experience with Python or R
+- Experience with a BI tool like Tableau or Looker
+- Ability to explain data clearly to people without a data background
+Nice to have: e-commerce or retail experience; dbt.`},
+  nurse: {label:'Nurse', resume:`Aisha Thompson, RN, BSN
+Registered Nurse, Medical-Surgical Unit, St. Brendan's Hospital (2021 to present)
+- Care for 5 to 6 patients per shift on a 32-bed med-surg unit
+- Led a falls-prevention project with the unit educator; falls dropped from 9 to 3 per quarter
+- Precept new graduate nurses; trained 6 in two years
+- Charge nurse on weekend night shifts
+Nursing Assistant, Lakeside Rehabilitation Center (2018 to 2021)
+Education: B.S. Nursing, 2021
+Licenses and certifications: RN license, BLS, ACLS`, jd:`Registered Nurse, Emergency Department
+Valley General is a 300-bed community hospital with a level II trauma center.
+What you'll do:
+- Assess, triage and care for patients of all ages in a busy emergency department
+- Work with physicians, techs and other nurses in fast-changing situations
+- Communicate clearly with patients and families during stressful moments
+- Follow evidence-based protocols and document accurately
+What we're looking for:
+- Active RN license and at least 1 year of acute care experience
+- BLS and ACLS required; PALS within 6 months of hire
+- Strong prioritization and calm under pressure
+- A collaborative, patient-centered approach
+Nice to have: emergency or critical care experience; TNCC.`},
+};
 const S = {
   view:'practice', step:'setup', busy:null, error:null, notice:null,
   sample:undefined, store:null, saving:true, loaded:false,
@@ -476,7 +591,9 @@ ${S.focus ? '- Target requirement '+S.focus+'.' : '- Target the requirement with
 - Align it closely with this job description and this candidate's resume, the way a hiring manager who read both would.
 - One question that asks one thing, under 40 words. No multi-part lists.
 
-Reply with only JSON: {"question":"...","requirement_ids":["r2"],"angle":"what this question tests, under 12 words"}`;
+If you ask a coding problem, state it fully in the question: the input, the expected output, and one short example. Coding questions may be up to 90 words.
+
+Reply with only JSON: {"question":"...","requirement_ids":["r2"],"angle":"what this question tests, under 12 words","is_coding":false}`;
 }
 
 function followupPrompt(c){
@@ -488,6 +605,8 @@ ${c.answer}
 >>>
 
 Decide whether a real interviewer would ask a follow-up before moving on. Ask one only when the answer is vague, skips part of the question, hides the candidate's own role behind "we", leaves out the result or how it was measured, or makes a claim worth testing. If the answer is already clear, specific and complete, do not ask; move on, the way a good interviewer would. Roughly half of decent answers need no follow-up.
+
+For a coding answer, good follow-ups ask about time or space complexity, an edge case the code misses, or how it would scale.
 
 If you ask, the follow-up must be ONE clear question to the candidate about their own experience, under 30 words, aimed at the weakest part of the answer. No feedback or praise.
 
@@ -543,7 +662,9 @@ ${rubricLines()}
 
 EVIDENCE RULE. For each dimension, copy the exact words (5 to 25 words) from the candidate's answers that most justify the score, character for character, with no edits and no ellipses. If no passage supports the score (for example the score is low because something is missing), set evidence to "" and say what is missing in the reason. Set confidence to "low" when the answer is too short or ambiguous to judge, otherwise "medium" or "high".
 
-SHORT OR NON-ANSWERS. If the answer is very short, off-topic, or the candidate says they don't know, score it honestly (usually 1 or 2), say so plainly and kindly in "fix", and make the stronger version a short model structure the candidate could follow, built from their resume facts, with placeholders for anything you don't know.
+${c.q.coding ? `CODING QUESTION. The answer contains code, which is not executed. Read it like an interviewer at a whiteboard and map the rubric to code: relevance = does the code solve the stated problem correctly; structure = a clear approach and well-organized code; specificity = handles edge cases (empty input, duplicates, large inputs); impact = efficiency, with time and space complexity stated and correct; clarity = readable names and a clear explanation. Name any bug plainly in the reason. For the stronger main answer, write a clean, correct reference solution in the same language the candidate used (or Python if none), followed by one line on time and space complexity. Do not use STAR labels for code; set "structure" to "Code".
+
+` : ''}SHORT OR NON-ANSWERS. If the answer is very short, off-topic, or the candidate says they don't know, score it honestly (usually 1 or 2), say so plainly and kindly in "fix", and make the stronger version a short model structure the candidate could follow, built from their resume facts, with placeholders for anything you don't know.
 
 STRONGER VERSIONS. Write a stronger answer for EACH question the candidate was asked: the main question, plus the follow-up and second follow-up only if they were asked. Write as the candidate, in first person.
 - Pick the structure that fits the question and name it in "structure". For a question about a past experience ("tell me about a time", "how did you...", "describe a situation"), use STAR: put each part on its own line, starting with "Situation:", "Task:", "Action:" and "Result:". For a product, design or strategy question, use: "Clarify:", "Approach:", "Tradeoffs:", "Measure:". For a motivation question, use: "Why the role:", "Why me:", "Why now:". For an opening "walk me through your background" question, use: "Present:", "Past:", "Future:". For an industry question, use: "Point:", "Evidence:", "So what:". A situational or skills question uses: "Clarify:", "Approach:", "Tradeoffs:", "Measure:".
@@ -620,7 +741,7 @@ function setQuestion(q){
   S.paused = null;
   if(!q || !q.question) throw new Error("Couldn't write a question. Try again.");
   const type = q.type || (S.profile ? nextType() : 'behavioral');
-  S.cur = {id:'a'+Date.now(), q:{question:String(q.question), requirement_ids:(q.requirement_ids||[]).map(String), kind:type, type, angle:String(q.angle||'')}, attempt:1, num:(S.profile && S.profile.sessAsked || 0) + 1};
+  S.cur = {id:'a'+Date.now(), q:{question:String(q.question), requirement_ids:(q.requirement_ids||[]).map(String), kind:type, type, angle:String(q.angle||''), coding:q.is_coding === true || q.is_coding === 'true'}, attempt:1, num:(S.profile && S.profile.sessAsked || 0) + 1};
   if(S.profile){ ensureSess(); S.profile.sessAsked = (S.profile.sessAsked || 0) + 1; saveProfile(); }
   S.draft.answer = ''; S.draft.follow = ''; S.step = 'question'; S.view = 'practice'; S.rec = {}; track('question', {kind:S.cur.q.kind}); S.speakNext = S.cur.q.question;
 }
@@ -646,7 +767,7 @@ function submitAnswer(){
   S.draft.answer = v;
   { const n = (v.match(/\S+/g) || []).length;
     if(n < 3){ S.error = 'Say or type at least a sentence before submitting.'; return render(); }
-    if(n < 20 && !S.forceShort){ S.shortWarn = {target:'answer', n}; return render(); } }
+    if(n < 20 && !S.forceShort && !(S.cur && S.cur.q.coding)){ S.shortWarn = {target:'answer', n}; return render(); } }
   S.cur.answer = v; track('answer', {voice:!!(S.rec.answer && S.rec.answer.raw.trim()), retry:(S.cur.attempt||1) > 1});
   S.cur.delivery = (S.rec.answer && S.rec.answer.raw.trim()) ? {answer: delivery(S.rec.answer)} : null;
   run('Listening to your answer…', async () => {
@@ -717,7 +838,7 @@ async function scoreAnswer(c){
       rewrite: Array.isArray(r.rewrites) && r.rewrites.length ? r.rewrites.filter(x => x && x.text).map(x => String(x.text)).join('\n\n') : String(r.rewrite || ''),
     };
     { const src = [c.answer, c.followAnswer, c.followAnswer2 || '', S.profile.resume, c.q.question].join('\n');
-      c.result.flags = numberFlags(c.result.rewrite, src); c.result.nameFlags = nameFlags(c.result.rewrite, src); }
+      c.result.flags = c.q.coding ? [] : numberFlags(c.result.rewrite, src); c.result.nameFlags = c.q.coding ? [] : nameFlags(c.result.rewrite, src); }
     if(!S.profile.session){ S.profile.session = 's'+Date.now(); saveProfile(); }
     c.createdAt = Date.now(); c.disputes = c.disputes || {}; c.session = S.profile.session;
     S.answers = S.answers.filter(a=>a.id !== c.id).concat([c]);
@@ -920,16 +1041,22 @@ const ROUNDS = {
 const ROUND_IDS = ['recruiter','hiring','final'];
 const curRound = () => (S.profile && S.profile.sessRound) || S.setup.round || 'hiring';
 const roundOf = () => ROUNDS[curRound()] || ROUNDS.hiring;
-const buildPlan = (round, len) => (ROUNDS[round] || ROUNDS.hiring).pool.slice(0, QCOUNT[len] || 5);
+const isEngRole = () => /\b(software|engineer|engineering|developer|programmer|sde|swe|devops|backend|back-end|frontend|front-end|full[- ]?stack|data engineer|machine learning engineer)\b/i.test(((S.profile && S.profile.setup && S.profile.setup.role) || '') + ' ' + ((S.profile && S.profile.jd) || '').slice(0, 400));
+const buildPlan = (round, len) => {
+  const pl = (ROUNDS[round] || ROUNDS.hiring).pool.slice(0, QCOUNT[len] || 5);
+  // engineering roles always get at least one skills (coding) question, even in short interviews
+  if(isEngRole() && round !== 'recruiter' && !pl.includes('craft')){ const k = pl.lastIndexOf('industry'); pl[k >= 0 ? k : pl.length - 1] = 'craft'; }
+  return pl;
+};
 const isReal = () => ((S.profile && S.profile.sessMode) || S.setup.mode || 'real') === 'real';
 const QTYPES = {
   intro: {label:'Opening question', how:"Open the interview the way a hiring manager does: ask the candidate to walk you through their background and what brings them to this role, referencing one specific thing on their resume."},
   resume: {label:'About your work', how:"Ask about specific work the candidate has done that is on their resume: a named project, role or result. Ask how they did it or what they personally owned, connected to a requirement of this job."},
   behavioral: {label:'Behavioral question', how:"Ask a behavioral question about a real past situation (\"Tell me about a time when...\") that tests one requirement of this role, such as handling conflict, a setback, prioritizing, influencing without authority, or working through ambiguity."},
   motivation: {label:'Motivation question', how:"Ask why the candidate wants this role at this company and why now, the way a recruiter screens for motivation and fit. Make it specific to this company."},
-  craft: {label:'Skills question', how:"Ask a role-specific skills question that tests the core craft of this job the way its hiring manager would: for example a product design or metrics question for a product manager, a technical problem for an engineer, a pitch or objection for sales, or designing a program for an enablement role."},
+  craft: {label:'Skills question', how:"Ask a role-specific skills question that tests the core craft of this exact job, the way its hiring manager would. Pick what fits the role: a product design or metrics question for a product manager; for a software engineer, usually a CODING problem (a small, well-defined function to write in any language, sized to their level and related to this job's domain), and otherwise a system design or debugging question; a discovery, pitch or objection-handling question for sales; a campaign or channel question for marketing; a SQL, metrics or analysis-design question for a data analyst; a clinical prioritization or patient-safety scenario for a nurse; a lesson-planning or classroom question for a teacher. For any other role, test its most important day-to-day skill."},
   situational: {label:'Situational question', how:"Ask a situational question: a realistic scenario the candidate would face in this exact role at this company (\"Imagine...\" or \"Suppose...\"), and ask how they would handle it."},
-  industry: {label:'Industry question', how:"Ask an industry question an expert in this field would ask: about this company's market, customers, competitors, trends, regulation, or the key metrics that matter. It should test real understanding of the industry, not trivia."},
+  industry: {label:'Industry question', how:"Ask an industry or field question an expert would ask, about whatever matters most in this field: trends, customers or patients, competitors, regulation, standards and best practices, or the key metrics people track. It should test real understanding of the field, not trivia, and never depend on private facts about this company."},
 };
 function sessInit(){
   const L = S.setup.length || 30;
@@ -1085,7 +1212,7 @@ function setupView(){
 
     <div class="actions startbar">
       <button class="btn pen" data-act="start" ${S.busy || !S.sample ? 'disabled':''}>${p ? 'Save and start' : 'Start interview'}</button>
-      ${p ? `<button class="btn ghost" data-act="canceledit">Cancel</button>` : `<span class="note">or</span><button class="link" data-act="sample" ${S.busy||!S.sample?'disabled':''}>try a sample interview, no resume needed</button>`}
+      ${p ? `<button class="btn ghost" data-act="canceledit">Cancel</button>` : `<span class="note">or try a sample interview, no resume needed:</span><span class="samples">${Object.entries(SAMPLES).map(([k, x]) => `<button class="chipbtn" data-act="sample" data-k="${k}" ${S.busy||!S.sample?'disabled':''}>${x.label}</button>`).join('')}</span>`}
     </div>
   </div>`;
 }
@@ -1110,7 +1237,8 @@ function questionView(){
   const c = S.cur;
   return `<div class="sheet">${sessTimeUp() ? `<p class="warnline">Time's up. Finish this answer, then you'll see your report.</p>` : ''}${questionBlock(c)}
     <label class="f" for="answer">Your answer</label>
-    <textarea id="answer" class="answer" placeholder="${S.setup.voice ? 'Press Start speaking and answer out loud. Your words appear here, and you can fix any mistakes before submitting.' : 'Type your answer as you would say it out loud.'}">${esc(S.draft.answer||'')}</textarea>
+    ${c.q.coding ? `<p class="note" style="margin:0 0 6px">Write your code in any language, then explain your approach and its time and space complexity underneath. Type this one, even in voice mode. Code isn't run, so it's reviewed the way an interviewer reads a whiteboard.</p>` : ''}
+    <textarea id="answer" class="answer${c.q.coding ? ' code' : ''}" spellcheck="${c.q.coding ? 'false' : 'true'}" placeholder="${c.q.coding ? '# Your code here\n\n# Approach and complexity:' : S.setup.voice ? 'Press Start speaking and answer out loud. Your words appear here, and you can fix any mistakes before submitting.' : 'Type your answer as you would say it out loud.'}">${esc(S.draft.answer||'')}</textarea>
     ${answerFoot('answer')}
     <div class="actionbar"><div class="row">${voiceActions('answer',['answer','Submit answer'])}</div><button class="link" data-act="skip">Skip this question</button></div>
     ${qRateHtml(c)}
@@ -1229,7 +1357,7 @@ function feedbackView(){
       </div>
       <div><h3>Your answer</h3>
         <p class="note" style="margin:0 0 8px">Highlights show the words each score is based on, in that score's color.</p>
-        <div class="answertext">${marked(c.answer,'a',sc)}${c.followAnswer ? `<span class="lbl">Follow-up: ${esc(c.followup)}</span>${marked(c.followAnswer,'b',sc)}` : `<span class="lbl">No follow-up needed${c.noFollowReason ? ': ' + esc(c.noFollowReason) : ''}</span>`}${c.followAnswer2 ? `<span class="lbl">Second follow-up: ${esc(c.followup2)}</span>${marked(c.followAnswer2,'c',sc)}` : ''}</div>
+        <div class="answertext${c.q.coding ? ' codeans' : ''}">${marked(c.answer,'a',sc)}${c.followAnswer ? `<span class="lbl">Follow-up: ${esc(c.followup)}</span>${marked(c.followAnswer,'b',sc)}` : `<span class="lbl">No follow-up needed${c.noFollowReason ? ': ' + esc(c.noFollowReason) : ''}</span>`}${c.followAnswer2 ? `<span class="lbl">Second follow-up: ${esc(c.followup2)}</span>${marked(c.followAnswer2,'c',sc)}` : ''}</div>
       </div>
     </div>
   </div>
@@ -1238,7 +1366,7 @@ function feedbackView(){
     <p class="note" style="margin:4px 0 0">One for each question you were asked, built only from what you said and your resume. Dashed boxes are details for you to fill in.</p>
     ${(r.rewrites && r.rewrites.length) ? r.rewrites.map(x => { const q = x.part === 'followup2' ? c.followup2 : x.part === 'followup' ? c.followup : c.q.question;
         const lbl = x.part === 'followup2' ? 'Second follow-up' : x.part === 'followup' ? 'Follow-up' : 'Main question';
-        return `<div class="rwblock"><div class="eyebrow">${lbl}</div><p class="rwq">${esc(q || '')}</p><div class="rewrite">${labelParts(rewriteHtml(x.text, r.flags, r.nameFlags))}</div></div>`; }).join('')
+        return `<div class="rwblock"><div class="eyebrow">${lbl}</div><p class="rwq">${esc(q || '')}</p><div class="rewrite${c.q.coding && x.part === 'main' ? ' codeblock' : ''}">${c.q.coding && x.part === 'main' ? esc(x.text) : labelParts(rewriteHtml(x.text, r.flags, r.nameFlags))}</div></div>`; }).join('')
       : `<div class="rewrite">${labelParts(rewriteHtml(r.rewrite, r.flags, r.nameFlags))}</div>`}
     ${fl.length ? `<p class="warnline" style="margin-top:12px">Not in your answer or resume: ${fl.map(esc).join(', ')}. Only keep them if they're true.</p>` : ''}
   </div>
@@ -1657,7 +1785,7 @@ function render(){
   const cb = $('#calblind'); if(cb) cb.onchange = () => { S.blind = cb.checked; render(); };
   const c2 = $('#calr2'); if(c2) c2.onchange = () => { S.r2 = c2.checked; render(); };
   const fs = $('#focus'); if(fs) fs.onchange = () => { S.focus = fs.value || null; };
-  meter('answer', 150, 300); meter('follow', 40, 150); meter('follow2', 30, 120);
+  if(!(S.cur && S.cur.q && S.cur.q.coding)) meter('answer', 150, 300); meter('follow', 40, 150); meter('follow2', 30, 120);
   if(S.speakNext && S.setup.voice && S.setup.autoRead){ const t = S.speakNext; S.speakNext = null; setTimeout(()=>speak(t), 150); } else S.speakNext = null;
 }
 
@@ -1738,12 +1866,16 @@ document.addEventListener('click', e => {
     Object.keys(S.draft).filter(k=>k.startsWith('anc')).forEach(k=>delete S.draft[k]);
     persist('rubric', {kind:'rubric', ...S.rubric}); return render(); }
   if(act==='ancreset'){ const orig = S.rubric.history[0]; S.rubric = {current:orig, history:[]}; Object.keys(S.draft).filter(k=>k.startsWith('anc')).forEach(k=>delete S.draft[k]); persist('rubric', {kind:'rubric', ...S.rubric}); return render(); }
-  if(act==='sample'){ S.usedSample = true; S.draft.resume = SAMPLE_RESUME; S.draft.jd = SAMPLE_JD; $('#resume').value = SAMPLE_RESUME; $('#jd').value = SAMPLE_JD; return startSetup(); }
+  if(act==='sample'){ const smp = SAMPLES[b.dataset.k || 'pm'] || SAMPLES.pm; S.usedSample = true; S.draft.resume = smp.resume; S.draft.jd = smp.jd; $('#resume').value = smp.resume; $('#jd').value = smp.jd; return startSetup(); }
   if(act==='copy'){ const rr = S.cur?.result; const t = rr && rr.rewrites && rr.rewrites.length ? rr.rewrites.map(x => (x.part === 'followup2' ? 'Second follow-up: ' + S.cur.followup2 : x.part === 'followup' ? 'Follow-up: ' + S.cur.followup : 'Question: ' + S.cur.q.question) + '\n' + x.text).join('\n\n') : (rr?.rewrite || ''); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>{ b.textContent = 'Copied'; }).catch(()=>{ b.textContent = 'Select the text to copy it'; }); return; }
   if(act==='disagree'){ S.disputeOpen = b.dataset.d; render(); const i = document.getElementById('disp-'+b.dataset.d); if(i) i.focus(); return; }
   if(act==='savedisp') return saveDispute(b.dataset.d);
 });
 document.addEventListener('keydown', e => {
+  if(e.key === 'Tab' && e.target && e.target.classList && e.target.classList.contains('code')){
+    e.preventDefault(); const t = e.target, a = t.selectionStart, z = t.selectionEnd;
+    t.value = t.value.slice(0, a) + '    ' + t.value.slice(z); t.selectionStart = t.selectionEnd = a + 4; t.dispatchEvent(new Event('input')); return;
+  }
   if(e.key==='Enter' && e.target.id && e.target.id.startsWith('disp-')){ e.preventDefault(); saveDispute(e.target.id.slice(5)); }
 });
 
