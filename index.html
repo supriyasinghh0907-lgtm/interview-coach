@@ -184,6 +184,8 @@ button.brand small{display:block}
 .answer.code{min-height:260px;white-space:pre;overflow-x:auto}
 .codeblock{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
 .endbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.modelans{margin-top:8px} .modelans summary{color:var(--pen);font-size:.9rem;font-weight:500}
+.modelans .rewrite{font-size:.98rem;margin-top:6px}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
@@ -841,7 +843,7 @@ async function scoreAnswer(c){
     { const src = [c.answer, c.followAnswer, c.followAnswer2 || '', S.profile.resume, c.q.question].join('\n');
       c.result.flags = c.q.coding ? [] : numberFlags(c.result.rewrite, src); c.result.nameFlags = c.q.coding ? [] : nameFlags(c.result.rewrite, src); }
     if(!S.profile.session){ S.profile.session = 's'+Date.now(); saveProfile(); }
-    c.createdAt = Date.now(); c.disputes = c.disputes || {}; c.session = S.profile.session;
+    c.createdAt = Date.now(); c.disputes = c.disputes || {}; c.session = c.session || S.profile.session; c.scoreFailed = false;
     S.answers = S.answers.filter(a=>a.id !== c.id).concat([c]);
     saveAnswer(c);
     { const sc = c.result.scores, ev = DIMS.filter(d=>sc[d.k].evidence), sd = DIMS.filter(d=>c.self && c.self[d.k]!=null && sc[d.k].score!=null);
@@ -851,8 +853,9 @@ async function scoreAnswer(c){
 function bgScore(c){
   S.pending = S.pending || {};
   S.pending[c.id] = (async () => {
-    for(let t = 0; t < 2; t++){ try { await scoreAnswer(c); return; } catch(e){ if(/limit|turned off|isn't available|expired/i.test(e.message || '')) break; } }
-    c.scoreFailed = true; S.failedScores = (S.failedScores || 0) + 1;
+    c.session = c.session || (S.profile && S.profile.session);
+    for(let t = 0; t < 2; t++){ try { await scoreAnswer(c); return; } catch(e){ S.lastScoreError = e.message || ''; if(/limit|turned off|isn't available|expired/i.test(e.message || '')) break; } }
+    c.scoreFailed = true; S.unscored = (S.unscored || []).filter(x => x.id !== c.id).concat([c]);
   })().finally(() => { if(S.pending) delete S.pending[c.id]; });
 }
 
@@ -1623,9 +1626,13 @@ async function finishInterview(){
   const bye = S.closing ? "Thanks for your time today. That's the end of the interview. " : '';
   if(S.pending && Object.keys(S.pending).length){ S.view = 'report'; await run(bye + 'Scoring your answers…', async () => { await Promise.all(Object.values(S.pending)); }); }
   const sid = S.profile?.session || 'earlier';
-  if(S.asks && S.asks[sid]) S.reportAsks = S.reportAsks || {};
+  await retryUnscored(sid, bye);
   const list = sessAnswers(sid);
-  if(!list.length){ S.error = S.failedScores ? "Your answers couldn't be scored (the free AI limit may be used up). Try again later." : 'Answer at least one question before finishing the interview.'; S.step = 'setup'; S.view = 'practice'; return render(); }
+  if(!list.length){
+    const waiting = (S.unscored || []).some(c => c.session === sid);
+    if(!waiting){ S.error = 'Answer at least one question before finishing the interview.'; S.step = 'setup'; S.view = 'practice'; S.closing = false; return render(); }
+    S.reportSid = sid; S.view = 'report'; S.closing = false; S.step = 'setup'; return render();
+  }
   S.reportSid = sid; S.view = 'report'; S.closing = false; track('finish', {n:list.length});
   if(S.profile){ sessInit(); saveProfile(); }
   S.step = 'setup';
@@ -1636,9 +1643,34 @@ async function finishInterview(){
     });
   } else render();
 }
+async function retryUnscored(sid, prefix){
+  const todo = (S.unscored || []).filter(c => c.session === sid);
+  if(!todo.length) return;
+  await run((prefix || '') + 'Scoring your answers…', async () => {
+    for(const c of todo){
+      try { await scoreAnswer(c); S.unscored = S.unscored.filter(x => x.id !== c.id); }
+      catch(e){ S.lastScoreError = e.message || ''; if(/limit|turned off|isn't available|expired/i.test(e.message || '')) break; }
+    }
+  });
+}
+async function rescore(sid){
+  await retryUnscored(sid);
+  const list = sessAnswers(sid);
+  if(list.length && !S.reports[sid]){
+    await run('Writing your interview report…', async () => {
+      let r = null; try { r = await ask(reportPrompt(list), 'default'); } catch(e){ r = null; }
+      if(r && r.headline){ S.reports[sid] = makeReport(sid, r); persist('rep_'+sid, S.reports[sid]); }
+    });
+  }
+  S.view = 'report'; S.reportSid = sid; render();
+}
 function reportView(){
   const sid = S.reportSid, list = sessAnswers(sid), rep = S.reports[sid];
-  if(!list.length) return `<div class="sheet"><p>No answers in this interview.</p></div>`;
+  const waiting = (S.unscored || []).filter(c => c.session === sid).length;
+  const why = /limit/i.test(S.lastScoreError || '') ? "Today's free AI limit was reached, so scoring will work again later." : (S.lastScoreError || 'The AI service had a problem answering.');
+  if(!list.length) return `<div class="sheet"><h2>Your answers are saved, but they couldn't be scored yet</h2>
+    <p>${waiting} ${waiting===1?'answer is':'answers are'} waiting. ${esc(why)}</p>
+    <div class="actions"><button class="btn pen" data-act="rescore">Try scoring again</button><button class="btn ghost" data-act="home">Back to home</button></div></div>`;
   const ranked = [...list].sort((a,b)=>ansAvg(b)-ansAvg(a)), best = ranked[0], worst = ranked[ranked.length-1];
   const dAvg = DIMS.map(d=>({d, v:avg(list.map(a=>a.result.scores[d.k].score).filter(v=>v!=null))}));
   const reqs = S.profile ? S.profile.setup.requirements : [];
@@ -1659,8 +1691,8 @@ function reportView(){
     <div class="sheet"><h3>What went well</h3>${rep.strengths.map(t=>`<p style="margin:0 0 10px">${esc(t)}</p>`).join('') || '<p class="note">None noted.</p>'}</div>
   </div>` : ''}
   <div class="sheet" style="margin-top:18px"><h3>Question by question</h3>
-    <ul class="list">${list.map((a, i) => `<li><span><span class="note">${i+1}. ${esc((QTYPES[a.q.type] || {}).label || 'Question')}</span><br>${esc(a.q.question)}<div class="sub">Change this first: ${esc(a.result.fix)}</div></span><span class="row" style="flex-direction:column;align-items:flex-end;gap:6px"><b>${fmt(ansAvg(a))} / 5</b><button class="link" data-act="review" data-i="${a.id}">See full feedback</button></span></li>`).join('')}</ul>
-    ${S.failedScores ? `<p class="warnline" style="margin-top:8px">Some answers couldn't be scored and aren't listed.</p>` : ''}
+    <ul class="list">${list.map((a, i) => `<li><span><span class="note">${i+1}. ${esc((QTYPES[a.q.type] || {}).label || 'Question')}</span><br>${esc(a.q.question)}<div class="sub">Change this first: ${esc(a.result.fix)}</div>${(() => { const rw = (a.result.rewrites && a.result.rewrites.length) ? a.result.rewrites : (a.result.rewrite ? [{part:'main', text:a.result.rewrite}] : []); return rw.length ? `<details class="modelans"><summary>Model answer${rw.length > 1 ? 's' : ''}${a.result.structure ? ` (${esc(a.result.structure)})` : ''}</summary>${rw.map(x => { const lbl = x.part === 'followup2' ? 'Second follow-up: ' + (a.followup2 || '') : x.part === 'followup' ? 'Follow-up: ' + (a.followup || '') : ''; return `${lbl ? `<p class="rwq">${esc(lbl)}</p>` : ''}<div class="rewrite${a.q.coding && x.part === 'main' ? ' codeblock' : ''}">${a.q.coding && x.part === 'main' ? esc(x.text) : labelParts(rewriteHtml(x.text, a.result.flags || [], a.result.nameFlags || []))}</div>`; }).join('')}</details>` : ''; })()}</span><span class="row" style="flex-direction:column;align-items:flex-end;gap:6px"><b>${fmt(ansAvg(a))} / 5</b><button class="link" data-act="review" data-i="${a.id}">See full feedback</button></span></li>`).join('')}</ul>
+    ${waiting ? `<div class="shortwarn" style="margin-top:10px"><span>${waiting} ${waiting===1?'answer':'answers'} couldn't be scored yet. ${esc(why)}</span><button class="btn ghost sm" data-act="rescore">Score ${waiting===1?'it':'them'} now</button></div>` : ''}
   </div>
   ${(() => { const asks = (S.asks && S.asks[sid]) || []; return `<div class="sheet" style="margin-top:18px"><h3>Your questions for the interviewer</h3>${asks.length ? asks.map(x => `<div class="askitem"><p class="askq"><b>You asked:</b> ${esc(x.q)}</p><div class="meta"><span>${pips(x.rating)}</span><span>${esc(x.why)}</span></div>${x.better ? `<p class="note" style="margin:6px 0 0">Stronger: <i>${esc(x.better)}</i></p>` : ''}</div>`).join('') : `<p class="warnline" style="margin:0">You didn't ask any questions. Interviewers notice this, so prepare two or three, like the ones below.</p>`}</div>`; })()}
   ${rep && rep.questionsToAsk && rep.questionsToAsk.length ? `<div class="sheet" style="margin-top:18px"><h3>Questions to ask your interviewer</h3>
@@ -1841,6 +1873,7 @@ document.addEventListener('click', e => {
   if(act==='delyes') return deleteAll();
   if(act==='nudgeno'){ S.nudgeOff = {...(S.nudgeOff||{}), [S.profile?.session]: true}; return render(); }
   if(act==='finish') return endInterview();
+  if(act==='rescore'){ delete S.reports[S.reportSid]; return rescore(S.reportSid); }
   if(act==='finishnow'){ S.askDone = true; S.askMore = false; S.closing = true; return finishInterview(); }
   if(act==='askmore'){ S.askMore = true; render(); const el = document.getElementById('askq'); if(el) el.focus(); return; }
   if(act==='askq') return askSubmit();
