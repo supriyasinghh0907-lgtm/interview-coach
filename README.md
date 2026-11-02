@@ -4,7 +4,7 @@ An AI interview coach whose feedback you can check.
 
 Most AI interview coaches give you a score and expect you to trust it. This one shows the evidence behind every score, checks that evidence, and refuses to invent achievements when it rewrites your answer.
 
-**Live demo:** https://YOURNAME.github.io/interview-coach/ (replace with your link)
+**Live demo:** https://supriyasinghh0907-lgtm.github.io/interview-coach/
 
 ## What it does
 
