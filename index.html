@@ -243,6 +243,9 @@ nav.tabs button[aria-current="page"]{background:var(--pen);color:var(--pen-ink)}
 .tval{font-variant-numeric:tabular-nums;color:var(--muted)} .tval b{color:var(--ink)}
 .retrycta{background:linear-gradient(135deg,color-mix(in srgb,var(--ok) 9%,var(--sheet)),var(--sheet))}
 .retrybanner{border-left-color:var(--ok)}
+.scalenote{font-size:.78rem;margin-top:2px}
+.noanswer{border-left-color:var(--warn);margin-top:16px}
+.whyworks{margin:8px 0 0;padding:8px 12px;border-radius:8px;background:color-mix(in srgb,var(--ok) 8%,var(--sheet));font-size:.9rem}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
@@ -693,6 +696,37 @@ Decide whether a real interviewer would ask ONE more follow-up. Ask again only i
 
 Reply with only JSON: {"ask_again":true,"reason":"why, under 12 words","followup":"the question, under 30 words, or an empty string"}`;
 }
+// What a strong answer looks like for each question type, with one example of the standard.
+// Examples are from made-up candidates in other fields: the model copies the style, never the facts.
+const ANSWER_GUIDE = {
+  intro: {recipe:"A 60-second pitch, not a life story. Present: who the candidate is now, in one line tied to this role. Past: two proof points from the resume, each with a result. Future: why this role at this company, and why now.",
+    example:"Present: I'm an operations analyst at a regional grocery chain, where I turn messy store data into decisions managers actually use.\nPast: I built a stockout tracker that 60 store managers check every morning, and it cut empty-shelf hours by 30%. Before that, I redesigned the weekly ordering report so buyers spent two hours less on it each week.\nFuture: I want to move from recommending changes to owning them, and your inventory product is where that kind of data and user empathy decide what ships."},
+  motivation: {recipe:"Specific to this company, never generic praise. Why the role: the problem this team solves and why it matters to the candidate. Why me: one proof point from the resume that fits. Why now: the career step this represents.",
+    example:"Why the role: You're building tools that help small restaurants manage inventory, and I've watched owners do that on paper for three years.\nWhy me: At my last company I launched a supplier-ordering feature that cut stockouts 22% across 140 stores, so I know where the real friction is.\nWhy now: I've grown from analyst to owning a roadmap, and I want to do that where this problem is the whole business, not a side project."},
+  resume: {recipe:"STAR about this exact piece of work. Situation and Task in one or two sentences with the stakes. Most of the answer is Action: what the candidate personally did, one decision and why. Result with a number, then what changed afterward.",
+    example:"Situation: Checkout conversion dropped 9% after a redesign, six weeks before the holiday peak, and no one agreed why.\nTask: I owned finding the cause and a fix before the peak.\nAction: I split 80,000 sessions by device and checkout step and found the drop was mobile-only, at the address form. Instead of a full rollback, I pushed for a quick test removing two optional fields, because it would teach us more, faster.\nResult: Mobile conversion recovered 7 points in two weeks, worth about $1.2M over the season, and the team now checks step-level data before every release."},
+  behavioral: {recipe:"STAR with a real tension (a disagreement, setback, tough priority or ambiguity). Show how the candidate handled people, not just the task. Result with a number, then one sentence on what they learned or now do differently.",
+    example:"Situation: Two weeks before launch, our engineering lead wanted to delay for a full refactor.\nTask: I had to protect the date without ignoring a real quality risk.\nAction: I met him one-on-one and asked him to rank his top three risks. We agreed to fix the one touching payments now and schedule the rest. I wrote a one-page tradeoff note for leadership, so it was a shared plan, not my opinion against his.\nResult: We launched on time with zero payment incidents, and the refactor shipped the next sprint. I learned to turn disagreements into a ranked list of risks."},
+  situational: {recipe:"Think out loud like an expert in this role. Clarify: the key questions and assumptions first. Approach: a clear, ordered plan. Tradeoffs: one real tradeoff and the choice made. Measure: how success is judged, with a guardrail.",
+    example:"Clarify: First I'd check the drop is real: is it every customer or one segment, and did tracking change in the release?\nApproach: I'd compare the funnel before and after for new and returning users, read that week's support tickets, and list which release changes touched that flow.\nTradeoffs: If one change is the clear cause, I'd roll it back now rather than wait for a perfect diagnosis, because every day costs customers.\nMeasure: Success is the rate back to baseline within a week, with a guardrail that error rates don't rise."},
+  craft: {recipe:"Show the core skill of this job the way its best practitioners do. For design or strategy questions use Clarify, Approach, Tradeoffs, Measure, with a concrete user, a prioritized idea, and a metric. For technical questions, state the approach, the key tradeoff, and how it scales or fails.",
+    example:"Clarify: I'd focus on first-time sellers listing their first item, since that's where most drop off.\nApproach: Let them list from a photo: we suggest the title, category and price, and they just confirm. Shipping and payout setup can wait until the first sale.\nTradeoffs: Auto-suggested prices could be wrong, so we show the range we used and let them edit, trading a little speed for trust.\nMeasure: Percent of new sellers who publish a listing within a day, with a guardrail on returns caused by wrong details."},
+  industry: {recipe:"An expert's point of view, not a news summary. Point: one clear opinion. Evidence: the reasoning or widely known trends behind it, without inventing statistics. So what: what it means for this company or team, and what to measure.",
+    example:"Point: The biggest shift in grocery delivery is that keeping customers now matters more than winning new ones.\nEvidence: Acquisition keeps getting more expensive while basket sizes stay flat, so the services that win are the ones people use every week, not the ones with the best launch promo.\nSo what: For your team, I'd put repeat-order features like saved lists and reliable delivery windows first, and judge them by 90-day repeat rate, not sign-ups."},
+};
+function answerGuide(c){
+  if(c.q.coding) return `STRONG ANSWER RECIPE (coding). The main stronger answer is a clean, correct reference solution, followed by a short plain-language talk-through: the approach in one sentence, time and space complexity, and the edge cases it handles.
+
+`;
+  const g = ANSWER_GUIDE[c.q.type] || ANSWER_GUIDE.behavioral;
+  return `STRONG ANSWER RECIPE for this ${(QTYPES[c.q.type] || {}).label || 'question'}: ${g.recipe}
+Follow-up answers: answer the follow-up directly in the first sentence, then give one specific proof.
+
+EXAMPLE OF THE STANDARD (a different, made-up candidate in another field: match this quality and style, never copy its facts, numbers or company names):
+${g.example}
+
+`;
+}
 function scorePrompt(c){
   const reqs = (S.profile.setup.requirements||[]).filter(r=>(c.q.requirement_ids||[]).includes(r.id)).map(r=>r.text).join('; ');
   return `You are scoring a mock interview answer. Be honest and calibrated: a typical decent answer scores 3. Reserve 5 for answers a hiring manager would remember.
@@ -726,15 +760,24 @@ EVIDENCE RULE. For each dimension, copy the exact words (5 to 25 words) from the
 
 ${c.q.coding ? `CODING QUESTION. The answer contains code, which is not executed. Read it like an interviewer at a whiteboard and map the rubric to code: relevance = does the code solve the stated problem correctly; structure = a clear approach and well-organized code; specificity = handles edge cases (empty input, duplicates, large inputs); impact = efficiency, with time and space complexity stated and correct; clarity = readable names and a clear explanation. Name any bug plainly in the reason. For the stronger main answer, write a clean, correct reference solution in the same language the candidate used (or Python if none), followed by one line on time and space complexity. Do not use STAR labels for code; set "structure" to "Code".
 
-` : ''}SHORT OR NON-ANSWERS. If the answer is very short, off-topic, or the candidate says they don't know, score it honestly (usually 1 or 2), say so plainly and kindly in "fix", and make the stronger version a short model structure the candidate could follow, built from their resume facts, with placeholders for anything you don't know.
+` : ''}SHORT OR NON-ANSWERS. Set "non_answer" to true when the candidate did not really attempt the question (for example "I don't know", a refusal, or an unrelated reply). If the answer is very short, off-topic, or the candidate says they don't know, score it honestly (usually 1 or 2), say so plainly and kindly in "fix", and make the stronger version a short model structure the candidate could follow, built from their resume facts, with placeholders for anything you don't know.
 
-STRONGER VERSIONS. Write a stronger answer for EACH question the candidate was asked: the main question, plus the follow-up and second follow-up only if they were asked. Write as the candidate, in first person.
+${answerGuide(c)}STRONGER VERSIONS. Write a stronger answer for EACH question the candidate was asked: the main question, plus the follow-up and second follow-up only if they were asked. Write as the candidate, in first person.
 - Pick the structure that fits the question and name it in "structure". For a question about a past experience ("tell me about a time", "how did you...", "describe a situation"), use STAR: put each part on its own line, starting with "Situation:", "Task:", "Action:" and "Result:". For a product, design or strategy question, use: "Clarify:", "Approach:", "Tradeoffs:", "Measure:". For a motivation question, use: "Why the role:", "Why me:", "Why now:". For an opening "walk me through your background" question, use: "Present:", "Past:", "Future:". For an industry question, use: "Point:", "Evidence:", "So what:". A situational or skills question uses: "Clarify:", "Approach:", "Tradeoffs:", "Measure:".
-- Main answer: under 150 words. Each follow-up answer: under 70 words, answering that follow-up directly; it can use the same labels when that helps, or be two or three plain sentences.
+- Main answer: 120 to 180 words, about one minute spoken. Each follow-up answer: 40 to 80 words, answering that follow-up directly; it can use the same labels when that helps, or be two or three plain sentences.
+- QUALITY BAR. Write it the way the strongest candidate for this exact role would actually say it out loud to this hiring manager:
+  * Open with a one-sentence headline: the result or the point, not background.
+  * Use "I" for what the candidate personally did, with concrete actions, not "we worked on".
+  * Show judgment: one real decision, tradeoff or insight, and why they chose it.
+  * Land the result with a number from the resume facts when one exists, and say why it mattered to the business, customers or team.
+  * Close with one short line that connects it to this role or company.
+  * Sound like a confident person talking, not a cover letter. Never use filler such as "I'm passionate about", "dynamic", "leverage my skills", "excited to apply my experience", "fast-paced environment", "results-driven" or "team player".
+  * Use every relevant resume fact (project names, tools, numbers, who was affected) before using any placeholder. Placeholders must say exactly what to add, like [the % drop in no-shows you measured] or [one tradeoff you made, e.g. speed vs. accuracy], never vague ones like [add details].
+- For each stronger answer, add "why": one short sentence on what makes it strong, so the candidate learns the technique.
 - Use ONLY facts from the candidate's answers and the resume facts. Never invent numbers, names, tools, or outcomes. Where a stronger answer needs a detail the candidate did not give, insert a bracketed placeholder such as [add the % change in retention].
 
 Reply with only JSON:
-{"scores":{"relevance":{"score":3,"evidence":"...","reason":"one sentence","confidence":"high"},"structure":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"specificity":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"impact":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"clarity":{"score":3,"evidence":"...","reason":"...","confidence":"medium"}},"strength":"the single best thing, one sentence","fix":"the single most important change, one sentence","structure":"STAR","rewrites":[{"part":"main","text":"Situation: ...\\nTask: ...\\nAction: ...\\nResult: ..."}${c.followAnswer ? ',{"part":"followup","text":"..."}' : ''}${c.followAnswer2 ? ',{"part":"followup2","text":"..."}' : ''}]}`;
+{"scores":{"relevance":{"score":3,"evidence":"...","reason":"one sentence","confidence":"high"},"structure":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"specificity":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"impact":{"score":3,"evidence":"...","reason":"...","confidence":"medium"},"clarity":{"score":3,"evidence":"...","reason":"...","confidence":"medium"}},"strength":"the single best thing, one sentence","fix":"the single most important change, one sentence","non_answer":false,"structure":"STAR","rewrites":[{"part":"main","text":"Situation: ...\\nTask: ...\\nAction: ...\\nResult: ...","why":"..."}${c.followAnswer ? ',{"part":"followup","text":"...","why":"..."}' : ''}${c.followAnswer2 ? ',{"part":"followup2","text":"...","why":"..."}' : ''}]}`;
 }
 
 /* ---------- checks the page runs on the model's output ---------- */
@@ -896,8 +939,8 @@ async function scoreAnswer(c){
     if(!r || !r.scores) throw new Error("The scoring came back incomplete. Try again.");
     c.result = {
       scores: verify(c, r.scores),
-      strength: String(r.strength || ''), fix: String(r.fix || ''), structure: String(r.structure || ''),
-      rewrites: (Array.isArray(r.rewrites) ? r.rewrites : []).filter(x => x && x.text).map(x => ({part: String(x.part || 'main'), text: String(x.text)})).slice(0, 3),
+      strength: String(r.strength || ''), fix: String(r.fix || ''), structure: String(r.structure || ''), nonAnswer: r.non_answer === true || r.non_answer === 'true',
+      rewrites: (Array.isArray(r.rewrites) ? r.rewrites : []).filter(x => x && x.text).map(x => ({part: String(x.part || 'main'), text: String(x.text), why: String(x.why || '')})).slice(0, 3),
       rewrite: Array.isArray(r.rewrites) && r.rewrites.length ? r.rewrites.filter(x => x && x.text).map(x => String(x.text)).join('\n\n') : String(r.rewrite || ''),
     };
     { const src = [c.answer, c.followAnswer, c.followAnswer2 || '', S.profile.resume, c.q.question].join('\n');
@@ -938,7 +981,7 @@ function dictate(target){
   if(rec){ recWant = false; rec.stop(); return; }
   if(!SR || S.micBlocked){ if(!SR){ S.micBlocked = true; S.micReason = 'nosr'; } startTimer(target); return render(); }
   ttsStop();
-  recWant = true; recTarget = target; startRec(SR, target); render();
+  recWant = true; recTarget = target; S.heard = false; startRec(SR, target); render();
 }
 /* fallback when the page can't use the microphone: the person dictates with their device's own
    dictation, and the page only times the answer so pace and filler words can still be measured */
@@ -982,12 +1025,27 @@ function micHelp(){
     <li>Speak your answer, then press <b>Stop timer</b>.</li></ol>
     <span class="note">If you blocked the microphone by accident: click the icon left of the address bar, set Microphone to Allow, then reload and press <button class="link" data-act="mictry">try the microphone again</button>.</span></div>`;
 }
+function showMicHint(target){
+  if(document.getElementById('hearhint')) return;
+  const im = document.getElementById('interim-' + target); if(!im) return;
+  const box = document.createElement('div'); box.id = 'hearhint'; box.className = 'michelp';
+  box.innerHTML = '<b>Not hearing anything yet.</b> Try these, then press Stop and Start speaking again:<ol>' +
+    '<li>Click the microphone icon at the right of Chrome\'s address bar and pick the right microphone (for example "MacBook Pro Microphone").</li>' +
+    '<li>On a Mac: System Settings → Privacy &amp; Security → Microphone → make sure Google Chrome is on, then quit and reopen Chrome.</li>' +
+    '<li>Close apps that may be using the microphone, like Zoom, Teams or FaceTime.</li>' +
+    '<li>Use Google Chrome itself. Brave, Arc and some other browsers block speech input.</li></ol>' +
+    '<span class="note">Or <button class="link" data-act="usedictation">use your device\'s dictation instead</button>.</span>';
+  im.after(box);
+}
 function startRec(SR, target){
   const st = recStats(target);
   try {
     rec = new SR(); rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US';
     recT0 = Date.now(); let last = recT0;
+    clearTimeout(S.hearT); S.heard = S.heard || false;
+    S.hearT = setTimeout(() => { if(!S.heard && rec) showMicHint(target); }, 8000);
     rec.onresult = e => {
+      if(!S.heard){ S.heard = true; clearTimeout(S.hearT); const h = document.getElementById('hearhint'); if(h) h.remove(); }
       const now = Date.now(); if(now - last > 3000 && st.raw.trim()) st.pauses++; last = now;
       const ta = document.getElementById(target); let interim = '';
       for(let i=e.resultIndex; i<e.results.length; i++){
@@ -1001,7 +1059,8 @@ function startRec(SR, target){
     };
     rec.onerror = ev => {
       if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed' || ev.error === 'audio-capture' || ev.error === 'network'){ recWant = false; S.micBlocked = true; S.micReason = ev.error; S.error = null; }
-      else if(ev.error !== 'no-speech' && ev.error !== 'aborted'){ recWant = false; S.error = 'Voice input stopped. Check the text, then keep going.'; }
+      else if(ev.error === 'no-speech'){ if(!S.heard) showMicHint(target); }
+      else if(ev.error !== 'aborted'){ recWant = false; S.error = 'Voice input stopped (' + ev.error + '). Check the text, then keep going, or type your answer.'; }
     };
     rec.onend = () => {
       st.ms += Date.now() - recT0;
@@ -1037,7 +1096,7 @@ function delivery(st){
   const raw = st.raw || '', words = (raw.trim().match(/\S+/g)||[]).length, min = st.ms/60000;
   const low = ' ' + raw.toLowerCase().replace(/[^a-z' ]+/g,' ').replace(/\s+/g,'  ') + ' ';
   const fillers = {}; FILLERS.forEach(f => { const n = (low.match(new RegExp(' '+f.replace(' ','  ')+' ','g'))||[]).length; if(n) fillers[f] = n; });
-  return {words, ms:st.ms, wpm: min > 0.08 ? Math.round(words/min) : null, fillers, fillerTotal:Object.values(fillers).reduce((a,b)=>a+b,0), pauses: st.noPauses ? null : st.pauses};
+  return {words, ms:st.ms, wpm: (min > 0.08 && words >= 25) ? Math.round(words/min) : null, fillers, fillerTotal:Object.values(fillers).reduce((a,b)=>a+b,0), pauses: st.noPauses ? null : st.pauses};
 }
 const mmss = ms => { const x = Math.round((ms||0)/1000); return Math.floor(x/60)+':'+String(x%60).padStart(2,'0'); };
 
@@ -1447,8 +1506,10 @@ function nameFlags(rewrite, source){
   for(const sent of clean.split(/(?<=[.!?:;])\s+|\n+/)){
     const toks = sent.match(/[A-Za-z][A-Za-z0-9&+'-]*/g) || [];
     toks.slice(1).forEach(t => { t = t.replace(/['-]+$/, '').replace(/'s$/, '');
-      if(t.length < 2 || !/^[A-Z]/.test(t) || NAME_STOP.has(t)) return;
-      if(!src.includes(t.toLowerCase())) out.add(t); });
+      if(t.length < 2 || !/^[A-Z]/.test(t) || NAME_STOP.has(t) || /'/.test(t)) return;
+      const low = t.toLowerCase();
+      if(src.includes(low) || (low.endsWith('s') && src.includes(low.slice(0, -1))) || (low.endsWith('es') && src.includes(low.slice(0, -2)))) return;
+      out.add(t); });
   }
   return [...out].slice(0, 8);
 }
@@ -1492,13 +1553,14 @@ function feedbackView(){
     <div class="eyebrow">Question${c.attempt>1?`, attempt ${c.attempt}`:''}</div>
     <p class="q small" style="margin-bottom:16px">${esc(c.q.question)}</p>
     <div class="summary">
-      <div><div class="big">${fmt(cavg)}<small> / 5</small></div>
+      <div><div class="big">${fmt(cavg)}<small> / 5</small></div><div class="note scalenote">1 is the lowest score, 5 is excellent</div>
         ${prev && pavg!=null && cavg!=null ? `<div class="delta-line ${cavg>pavg?'up':cavg<pavg?'down':''}">${cavg>pavg?'Up':cavg<pavg?'Down':'No change'} ${cavg!==pavg?fmt(Math.abs(cavg-pavg))+' ':''}from last attempt</div>` : ''}
         ${selfDims.length ? `<div class="note">You and the coach agreed on ${agree} of ${selfDims.length}</div>` : ''}</div>
       <div class="fixbox"><div class="sum-label">Change this first</div>${esc(r.fix)}</div>
       <div><div class="sum-label">Working well</div>${esc(r.strength)}</div>
     </div>
   </div>
+  ${(r.nonAnswer || (cavg != null && cavg <= 1.2)) ? `<div class="banner noanswer"><b>No real answer was given, so this gets the lowest score (1 out of 5).</b> In a real interview, "I don't know" usually ends the conversation on that topic. A better move is to say what you do know, or how you'd find out. Start from the stronger answer below, then press <b>Practice this question again</b>.</div>` : ''}
   ${nudgeHtml()}
   <div class="sheet sec">
     <div class="fb">
@@ -1527,7 +1589,7 @@ function feedbackView(){
     <p class="note" style="margin:4px 0 0">One for each question you were asked, built only from what you said and your resume. Dashed boxes are details for you to fill in.</p>
     ${(r.rewrites && r.rewrites.length) ? r.rewrites.map(x => { const q = x.part === 'followup2' ? c.followup2 : x.part === 'followup' ? c.followup : c.q.question;
         const lbl = x.part === 'followup2' ? 'Second follow-up' : x.part === 'followup' ? 'Follow-up' : 'Main question';
-        return `<div class="rwblock"><div class="eyebrow">${lbl}</div><p class="rwq">${esc(q || '')}</p><div class="rewrite${c.q.coding && x.part === 'main' ? ' codeblock' : ''}">${c.q.coding && x.part === 'main' ? esc(x.text) : labelParts(rewriteHtml(x.text, r.flags, r.nameFlags))}</div></div>`; }).join('')
+        return `<div class="rwblock"><div class="eyebrow">${lbl}</div><p class="rwq">${esc(q || '')}</p><div class="rewrite${c.q.coding && x.part === 'main' ? ' codeblock' : ''}">${c.q.coding && x.part === 'main' ? esc(x.text) : labelParts(rewriteHtml(x.text, r.flags, r.nameFlags))}</div>${x.why ? `<p class="whyworks"><b>Why this works:</b> ${esc(x.why)}</p>` : ''}</div>`; }).join('')
       : `<div class="rewrite">${labelParts(rewriteHtml(r.rewrite, r.flags, r.nameFlags))}</div>`}
     ${fl.length ? `<p class="warnline" style="margin-top:12px">Not in your answer or resume: ${fl.map(esc).join(', ')}. Only keep them if they're true.</p>` : ''}
   </div>
@@ -1853,7 +1915,7 @@ function reportView(){
     <div class="sheet"><h3>What went well</h3>${rep.strengths.map(t=>`<p style="margin:0 0 10px">${esc(t)}</p>`).join('') || '<p class="note">None noted.</p>'}</div>
   </div>` : ''}
   <div class="sheet" style="margin-top:18px"><h3>Question by question</h3>
-    <ul class="list">${list.map((a, i) => `<li><span><span class="note">${i+1}. ${esc((QTYPES[a.q.type] || {}).label || 'Question')}</span><br>${esc(a.q.question)}<div class="sub">Change this first: ${esc(a.result.fix)}</div>${(() => { const rw = (a.result.rewrites && a.result.rewrites.length) ? a.result.rewrites : (a.result.rewrite ? [{part:'main', text:a.result.rewrite}] : []); return rw.length ? `<details class="modelans"><summary>Model answer${rw.length > 1 ? 's' : ''}${a.result.structure ? ` (${esc(a.result.structure)})` : ''}</summary>${rw.map(x => { const lbl = x.part === 'followup2' ? 'Second follow-up: ' + (a.followup2 || '') : x.part === 'followup' ? 'Follow-up: ' + (a.followup || '') : ''; return `${lbl ? `<p class="rwq">${esc(lbl)}</p>` : ''}<div class="rewrite${a.q.coding && x.part === 'main' ? ' codeblock' : ''}">${a.q.coding && x.part === 'main' ? esc(x.text) : labelParts(rewriteHtml(x.text, a.result.flags || [], a.result.nameFlags || []))}</div>`; }).join('')}</details>` : ''; })()}</span><span class="row" style="flex-direction:column;align-items:flex-end;gap:6px"><b>${fmt(ansAvg(a))} / 5</b><button class="link" data-act="review" data-i="${a.id}">See full feedback</button></span></li>`).join('')}</ul>
+    <ul class="list">${list.map((a, i) => `<li><span><span class="note">${i+1}. ${esc((QTYPES[a.q.type] || {}).label || 'Question')}</span><br>${esc(a.q.question)}<div class="sub">Change this first: ${esc(a.result.fix)}</div>${(() => { const rw = (a.result.rewrites && a.result.rewrites.length) ? a.result.rewrites : (a.result.rewrite ? [{part:'main', text:a.result.rewrite}] : []); return rw.length ? `<details class="modelans"><summary>Model answer${rw.length > 1 ? 's' : ''}${a.result.structure ? ` (${esc(a.result.structure)})` : ''}</summary>${rw.map(x => { const lbl = x.part === 'followup2' ? 'Second follow-up: ' + (a.followup2 || '') : x.part === 'followup' ? 'Follow-up: ' + (a.followup || '') : ''; return `${lbl ? `<p class="rwq">${esc(lbl)}</p>` : ''}<div class="rewrite${a.q.coding && x.part === 'main' ? ' codeblock' : ''}">${a.q.coding && x.part === 'main' ? esc(x.text) : labelParts(rewriteHtml(x.text, a.result.flags || [], a.result.nameFlags || []))}</div>${x.why ? `<p class="whyworks"><b>Why this works:</b> ${esc(x.why)}</p>` : ''}`; }).join('')}</details>` : ''; })()}</span><span class="row" style="flex-direction:column;align-items:flex-end;gap:6px"><b>${fmt(ansAvg(a))} / 5</b><button class="link" data-act="review" data-i="${a.id}">See full feedback</button></span></li>`).join('')}</ul>
     ${waiting ? `<div class="shortwarn" style="margin-top:10px"><span>${waiting} ${waiting===1?'answer':'answers'} couldn't be scored yet. ${esc(why)}</span><button class="btn ghost sm" data-act="rescore">Score ${waiting===1?'it':'them'} now</button></div>` : ''}
   </div>
   ${(() => { const asks = (S.asks && S.asks[sid]) || []; return `<div class="sheet" style="margin-top:18px"><h3>Your questions for the interviewer</h3>${asks.length ? asks.map(x => `<div class="askitem"><p class="askq"><b>You asked:</b> ${esc(x.q)}</p><div class="meta"><span>${pips(x.rating)}</span><span>${esc(x.why)}</span></div>${x.better ? `<p class="note" style="margin:6px 0 0">Stronger: <i>${esc(x.better)}</i></p>` : ''}</div>`).join('') : `<p class="warnline" style="margin:0">You didn't ask any questions. Interviewers notice this, so prepare two or three, like the ones below.</p>`}</div>`; })()}
