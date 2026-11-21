@@ -246,6 +246,13 @@ nav.tabs button[aria-current="page"]{background:var(--pen);color:var(--pen-ink)}
 .scalenote{font-size:.78rem;margin-top:2px}
 .noanswer{border-left-color:var(--warn);margin-top:16px}
 .whyworks{margin:8px 0 0;padding:8px 12px;border-radius:8px;background:color-mix(in srgb,var(--ok) 8%,var(--sheet));font-size:.9rem}
+#tourSpot{position:fixed;z-index:60;border-radius:12px;box-shadow:0 0 0 3px var(--pen),0 0 0 9999px rgba(15,23,42,.45);pointer-events:none;transition:all .18s ease}
+#tourTip{position:fixed;z-index:61;background:var(--sheet);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 12px 32px rgba(15,23,42,.25);font-size:.95rem}
+#tourTip p{margin:6px 0 12px;color:var(--muted);line-height:1.5}
+#tourTip .tstep{font-size:.75rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--pen);margin-bottom:4px}
+#tourTip .tbtns{display:flex;justify-content:space-between;align-items:center;gap:10px}
+@media (prefers-reduced-motion:reduce){#tourSpot{transition:none}}
+.endlink{color:var(--warn)}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
@@ -314,6 +321,71 @@ What we're looking for:
 - Evidence of shipping something with a team
 - A genuine interest in games, creators, or online communities
 Nice to have: experience running A/B tests, or building something for a community you belong to.`;
+const SAMPLES_EXTRA = {
+  teacher: {label:'Teacher', resume:`Daniel Okoro
+Middle School Science Teacher, Ridgeview Middle School (2020 to present)
+- Teach 7th and 8th grade science to about 120 students a year
+- Redesigned the lab curriculum around hands-on projects; the share of students passing the state science test rose from 61% to 74%
+- Started an after-school robotics club that grew from 8 to 35 students and placed second at the regional competition
+- Mentor two first-year teachers
+Education: B.S. Biology; M.Ed. Curriculum and Instruction
+Certifications: State teaching license, grades 6 to 12 science`, jd:`High School Biology Teacher
+Lakeshore High School serves 1,400 students in a diverse suburban district.
+What you'll do:
+- Teach biology and AP Biology to grades 9 to 12
+- Design engaging, standards-aligned lessons and labs
+- Support students with a wide range of learning needs, including English learners
+- Communicate regularly with families and collaborate with your department
+What we're looking for:
+- State teaching license in biology or science
+- 2+ years of classroom experience
+- Strong classroom management and differentiation skills
+- Use of data to track and improve student learning
+Nice to have: AP experience; coaching or club leadership.`},
+  finance: {label:'Financial analyst', resume:`Mei Chen
+Financial Analyst, Northgate Manufacturing (2021 to present)
+- Own the monthly forecast for a $90M business unit; cut forecast error from 12% to 4%
+- Built a pricing model in Excel that identified $1.8M in margin leakage across 300 products
+- Present monthly results to the CFO and division heads
+Audit Associate, Crane & Hale LLP (2019 to 2021)
+- Audited manufacturing and retail clients; led fieldwork for two engagements
+Education: B.S. Accounting; CPA candidate
+Skills: Excel, financial modeling, SQL, Power BI, NetSuite`, jd:`Senior Financial Analyst, FP&A
+Brightwater is a fast-growing consumer goods company.
+What you'll do:
+- Lead budgeting and forecasting for two business units
+- Build models that support pricing, investment and hiring decisions
+- Explain variances and recommend actions to senior leaders
+- Improve reporting and automate manual processes
+What we're looking for:
+- 3+ years in FP&A, corporate finance or public accounting
+- Advanced Excel and financial modeling skills
+- Clear communication with non-finance partners
+- Experience with a BI tool and ERP system
+Nice to have: CPA or CFA progress; consumer goods experience.`},
+  designer: {label:'UX designer', resume:`Lena Park
+Product Designer, Trellis Health (2022 to present)
+- Redesigned the appointment booking flow; booking completion rose from 58% to 76%
+- Ran 30+ usability sessions with patients and clinic staff
+- Built the company's first design system, used by 3 product teams
+Junior UX Designer, Bloom Agency (2020 to 2022)
+- Designed websites and apps for 12 retail and nonprofit clients
+Education: B.F.A. Interaction Design
+Skills: Figma, prototyping, user research, accessibility, design systems`, jd:`UX Designer
+Atlas is a travel app used by 2 million people to plan and book trips.
+What you'll do:
+- Design end-to-end experiences for search, booking and trip planning
+- Plan and run user research, and turn findings into clear design decisions
+- Partner closely with product managers and engineers from idea to launch
+- Contribute to and improve our design system
+What we're looking for:
+- 2+ years designing digital products, with a portfolio of shipped work
+- Strong interaction design and prototyping skills in Figma
+- Experience running usability tests
+- Clear communication of design decisions
+Nice to have: accessibility expertise; travel or e-commerce experience.`},
+};
+const SAMPLES_ORDER = ['swe','sales','nurse','teacher','marketing','data','finance','designer','pm'];
 const SAMPLES = {
   pm: {label:'Product manager', resume:SAMPLE_RESUME, jd:SAMPLE_JD},
   swe: {label:'Software engineer', resume:`Priya Nair
@@ -422,6 +494,7 @@ What we're looking for:
 - A collaborative, patient-centered approach
 Nice to have: emergency or critical care experience; TNCC.`},
 };
+Object.assign(SAMPLES, SAMPLES_EXTRA);
 const S = {
   view:'practice', step:'setup', busy:null, error:null, notice:null,
   sample:undefined, store:null, saving:true, loaded:false,
@@ -1212,7 +1285,7 @@ const QTYPES = {
   resume: {label:'About your work', how:"Ask about specific work the candidate has done that is on their resume: a named project, role or result. Ask how they did it or what they personally owned, connected to a requirement of this job."},
   behavioral: {label:'Behavioral question', how:"Ask a behavioral question about a real past situation (\"Tell me about a time when...\") that tests one requirement of this role, such as handling conflict, a setback, prioritizing, influencing without authority, or working through ambiguity."},
   motivation: {label:'Motivation question', how:"Ask why the candidate wants this role at this company and why now, the way a recruiter screens for motivation and fit. Make it specific to this company."},
-  craft: {label:'Skills question', how:"Ask a role-specific skills question that tests the core craft of this exact job, the way its hiring manager would. Pick what fits the role: a product design or metrics question for a product manager; for a software engineer, usually a CODING problem (a small, well-defined function to write in any language, sized to their level and related to this job's domain), and otherwise a system design or debugging question; a discovery, pitch or objection-handling question for sales; a campaign or channel question for marketing; a SQL, metrics or analysis-design question for a data analyst; a clinical prioritization or patient-safety scenario for a nurse; a lesson-planning or classroom question for a teacher. For any other role, test its most important day-to-day skill."},
+  craft: {label:'Skills question', how:"Ask a role-specific skills question that tests the core craft of this exact job, the way its hiring manager would. Pick what fits the role: a product design or metrics question for a product manager; for a software engineer, usually a CODING problem (a small, well-defined function to write in any language, sized to their level and related to this job's domain), and otherwise a system design or debugging question; a discovery, pitch or objection-handling question for sales; a campaign or channel question for marketing; a SQL, metrics or analysis-design question for a data analyst; a clinical prioritization or patient-safety scenario for a nurse; a lesson-planning or classroom question for a teacher; a forecasting or modeling question for a financial analyst; a design critique or user-research question for a designer. For any other role, test its most important day-to-day skill."},
   situational: {label:'Situational question', how:"Ask a situational question: a realistic scenario the candidate would face in this exact role at this company (\"Imagine...\" or \"Suppose...\"), and ask how they would handle it."},
   industry: {label:'Industry question', how:"Ask an industry or field question an expert would ask, about whatever matters most in this field: trends, customers or patients, competitors, regulation, standards and best practices, or the key metrics people track. It should test real understanding of the field, not trivia, and never depend on private facts about this company."},
 };
@@ -1235,7 +1308,7 @@ const nextType = () => { ensureSess(); const pl = S.profile.sessPlan; return pl[
 const timerText = () => { const ms = sessLeftMs(); if(ms <= 0) return "Time's up"; const t = Math.ceil(ms/1000); return Math.floor(t/60) + ':' + String(t%60).padStart(2,'0') + ' left'; };
 let lastSessSave = 0;
 setInterval(() => {
-  if(!S.profile || !S.profile.sessPlan || S.view !== 'practice' || S.busy || document.hidden) return;
+  if(!S.profile || !S.profile.sessPlan || S.view !== 'practice' || S.busy || document.hidden || TOUR) return;
   if(!['question','followup','followup2'].includes(S.step)) return;
   const was = sessLeftMs();
   S.profile.sessElapsed = (S.profile.sessElapsed || 0) + 1000;
@@ -1394,7 +1467,7 @@ function setupView(){
   const choice = (v, title, desc) => `<button type="button" class="choice" data-act="mode" data-v="${v}" aria-pressed="${(v==='voice')===!!S.setup.voice}"><b>${title}</b><span>${desc}</span></button>`;
   return `<div class="sheet">
     <h2 class="sectitle"><span class="stepnum">1</span>${p ? 'Change your resume or job' : 'Your resume and the job'}</h2>
-    <p class="note" style="margin:0">The coach writes questions from your resume and the job you want. ${CONFIG.PROXY_URL ? "Your answers are saved only in this browser. What you type is sent to an AI model to write questions and feedback, so leave out anything sensitive, like your phone number or home address." : "Your answers are saved only in this browser, but what you send is processed by Google's free Gemini API, which may use it to improve its models. Leave out anything sensitive, like your phone number or home address."}</p>
+    <p class="note" style="margin:0">Works for any job, from software and sales to nursing, teaching and finance. The coach writes questions from your resume and the job you want. ${CONFIG.PROXY_URL ? "Your answers are saved only in this browser. What you type is sent to an AI model to write questions and feedback, so leave out anything sensitive, like your phone number or home address." : "Your answers are saved only in this browser, but what you send is processed by Google's free Gemini API, which may use it to improve its models. Leave out anything sensitive, like your phone number or home address."}</p>
 
     <div class="grid2" style="margin-top:6px">
       <div>
@@ -1404,7 +1477,7 @@ function setupView(){
       </div>
       <div>
         <div class="labelrow"><label class="f" for="jd">The job description</label></div>
-        <textarea id="jd" placeholder="Paste the full job posting">${esc(S.draft.jd ?? p?.jd ?? '')}</textarea>
+        <textarea id="jd" placeholder="Paste the full job posting, for any role">${esc(S.draft.jd ?? p?.jd ?? '')}</textarea>
       </div>
     </div>
 
@@ -1432,7 +1505,7 @@ function setupView(){
     <p class="note" style="margin:0">You'll get a ${lenLabel(S.setup.length || 30)} ${ROUNDS[S.setup.round || 'hiring'].name.toLowerCase()} with ${QCOUNT[S.setup.length || 30]} questions, ${(S.setup.mode || 'real') === 'real' ? 'feedback at the end' : 'feedback after each answer'}, then your questions for the interviewer. You can end at any time and see your report.</p>
     <div class="actions startbar">
       <button class="btn pen" data-act="start" ${S.busy || !S.sample ? 'disabled':''}>${p ? 'Save and start' : 'Start interview'}</button>
-      ${p ? `<button class="btn ghost" data-act="canceledit">Cancel</button>` : `<span class="note">or start a sample interview right away, no resume needed:</span><span class="samples">${Object.entries(SAMPLES).map(([k, x]) => `<button class="chipbtn" data-act="sample" data-k="${k}" title="Start a sample ${x.label.toLowerCase()} interview now" ${S.busy||!S.sample?'disabled':''}><span aria-hidden="true">▶</span> ${x.label}</button>`).join('')}</span>`}
+      ${p ? `<button class="btn ghost" data-act="canceledit">Cancel</button>` : `<span class="note">or start a sample interview right away, no resume needed. Works for any role:</span><span class="samples">${SAMPLES_ORDER.filter(k => SAMPLES[k]).map(k => [k, SAMPLES[k]]).map(([k, x]) => `<button class="chipbtn" data-act="sample" data-k="${k}" title="Start a sample ${x.label.toLowerCase()} interview now" ${S.busy||!S.sample?'disabled':''}><span aria-hidden="true">▶</span> ${x.label}</button>`).join('')}</span>`}
     </div>
   </div>`;
 }
@@ -1460,7 +1533,7 @@ function questionView(){
     ${c.q.coding ? `<p class="note" style="margin:0 0 6px">Write your code in any language, then explain your approach and its time and space complexity underneath. Type this one, even in voice mode. Code isn't run, so it's reviewed the way an interviewer reads a whiteboard.</p>` : ''}
     <textarea id="answer" class="answer${c.q.coding ? ' code' : ''}" spellcheck="${c.q.coding ? 'false' : 'true'}" placeholder="${c.q.coding ? '# Your code here\n\n# Approach and complexity:' : S.setup.voice ? 'Press Start speaking and answer out loud. Your words appear here, and you can fix any mistakes before submitting.' : 'Type your answer as you would say it out loud.'}">${esc(S.draft.answer||'')}</textarea>
     ${answerFoot('answer')}
-    <div class="actionbar"><div class="row">${voiceActions('answer',['answer','Submit answer'])}</div><button class="link" data-act="skip">Skip this question</button></div>
+    <div class="actionbar"><div class="row">${voiceActions('answer',['answer','Submit answer'])}</div><span class="row" style="gap:18px"><button class="link" data-act="skip">Skip this question</button>${S.retryQueue ? '' : '<button class="link endlink" data-act="endask">End interview</button>'}</span></div>
     ${qRateHtml(c)}
   </div>`;
 }
@@ -1484,7 +1557,7 @@ function followView(){
     <p class="q">${esc(c.followup)}</p>
     <label class="f" for="follow">Your follow-up answer</label>
     <textarea id="follow" class="answer" style="min-height:140px">${esc(S.draft.follow||'')}</textarea>${answerFoot('follow')}
-    <div class="actionbar"><div class="row">${voiceActions('follow',['follow','Submit follow-up'])}</div></div></div>`;
+    <div class="actionbar"><div class="row">${voiceActions('follow',['follow','Submit follow-up'])}</div>${S.retryQueue ? '' : '<button class="link endlink" data-act="endask">End interview</button>'}</div></div>`;
 }
 
 function selfView(){
@@ -1660,6 +1733,8 @@ function aboutView(){
     <p>Score yourself before seeing feedback, and disagree with any score. Progress shows how often the coach's quotes check out, how often it agrees with you, and how often you pushed back.</p>
     <h3>Voice is measured separately</h3>
     <p>In voice mode the coach reads questions aloud and transcribes your answer. You can fix the transcript before it's scored, so a transcription mistake never lowers your content scores. Pace, filler words, and long pauses are reported in their own Delivery section and never change the rubric score.</p>
+    <h3>Tips</h3>
+    <p>Tips explain each screen the first time you see it. <button class="link" data-act="tourreset">Show the tips again</button></p>
     <h3>Practice only</h3>
     <p>This coach is for preparing before an interview. It doesn't listen in or feed you answers during a real one.</p>
     <p class="note"><button class="link" data-act="calon">Open calibration mode</button> to test the coach against human scores.</p>
@@ -2005,6 +2080,75 @@ function usageView(){
   </div>`;
 }
 
+/* ---------- guided tour: shows once per screen, the first time someone reaches it ---------- */
+const TOURS = {
+  setup: [
+    {sel:'#resume', box:'.sheet', title:'1. Add your resume and the job', text:"Paste your resume or upload a PDF, then paste the job posting. Every question is built from both."},
+    {sel:'.choices', box:'.sheet', title:'2. Choose the format', text:"Type or speak your answers, choose a real interview or practice mode, and pick the round and length."},
+    {sel:'.startcard', title:'3. Start', text:"Start your interview, or click a sample role to try a full interview right away, no resume needed."}],
+  question: [
+    {sel:'.jsteps', title:'Your progress', text:"Shows which question you're on. After the questions come your questions for the interviewer, then your report."},
+    {sel:'#itimer', title:'Time left', text:"The timer only runs while you're answering."},
+    {sel:'[data-act=endask]', title:'End the interview any time', text:"Want to stop early? Press End interview. Everything you've answered, including what's typed right now, is scored and you go straight to your report. It's also at the bottom, next to Skip."},
+    {sel:'#answer', title:'Your answer', text:"Answer as you would out loud, for about 1 to 2 minutes. In voice mode, press Start speaking and your words appear here so you can fix mistakes before you submit."},
+    {sel:'[data-act=skip]', title:'Skip a question', text:"Not a good question for you? Skip it and you'll get a different one."}],
+  followup: [
+    {sel:'#follow', box:'.sheet', title:'A follow-up question', text:"The interviewer only digs deeper when your answer needs it, for example your own role or the result."}],
+  askback: [
+    {sel:'#askq', title:'Your turn to ask', text:"Ask what you'd really ask. The interviewer answers in character, and the coach rates your question."},
+    {sel:'[data-act=finishnow]', title:'Finish the interview', text:"When you're done asking, finish here to see your full report."}],
+  report: [
+    {sel:'.big', box:'.sheet', title:'Your score', text:"Your overall score out of 5, where 1 is the lowest, and how it compares with your last interview."},
+    {sel:'.retrycta', title:'Improve right away', text:"Retry your weakest answers with feedback after each, and watch your score change."},
+    {sel:'details.modelans', title:'Model answers', text:"Open a model answer under any question to see a strong version, built only from your own resume and answers."},
+    {sel:'[data-act=review]', title:'Full feedback', text:"See each skill's score with the exact words from your answer that earned it."}],
+  home: [
+    {sel:'.homehero', title:'Your practice home', text:"Start a new interview, continue one in progress, or change the round, length and mode."},
+    {sel:'.trend, .howto', box:'.sheet', title:'Your progress over time', text:"See how each skill changes from your first interview to your latest."}],
+};
+let TOUR = null;
+const tourDone = k => { try { return !!localStorage.getItem('ic_tour_' + k); } catch(e){ return !!(S.tourMem || {})[k]; } };
+const tourMark = k => { try { localStorage.setItem('ic_tour_' + k, '1'); } catch(e){ (S.tourMem = S.tourMem || {})[k] = 1; } };
+function tourScreen(){
+  if(S.busy || !S.loaded || S.confirmEnd) return null;
+  if(S.view === 'report') return (S.reportSid && sessAnswers(S.reportSid).length) ? 'report' : null;
+  if(S.view !== 'practice') return null;
+  if(S.step === 'setup') return (S.profile && !S.editSetup) ? 'home' : 'setup';
+  if(S.retryQueue) return null;
+  return {question:'question', followup:'followup', askback:'askback'}[S.step] || null;
+}
+function tourCheck(){
+  const k = tourScreen();
+  if(TOUR && TOUR.key !== k){ tourMark(TOUR.key); closeTour(); }
+  if(TOUR){ placeTour(); return; }
+  if(!k || tourDone(k)) return;
+  const steps = TOURS[k].filter(st => document.querySelector(st.sel));
+  if(!steps.length) return;
+  TOUR = {key:k, i:0, steps}; placeTour(true);
+}
+function closeTour(){ TOUR = null; ['tourSpot','tourTip'].forEach(id => { const el = document.getElementById(id); if(el) el.remove(); }); }
+function placeTour(scroll){
+  if(!TOUR) return;
+  const st = TOUR.steps[TOUR.i]; let el = document.querySelector(st.sel);
+  if(!el){ return; }
+  if(st.box && el.closest(st.box)) el = el.closest(st.box);
+  if(scroll){ const r0 = el.getBoundingClientRect(); if(r0.top < 70 || r0.bottom > innerHeight - 40) el.scrollIntoView({block:'center'}); }
+  const r = el.getBoundingClientRect(), pad = 6;
+  let spot = document.getElementById('tourSpot'); if(!spot){ spot = document.createElement('div'); spot.id = 'tourSpot'; document.body.appendChild(spot); }
+  Object.assign(spot.style, {top:(r.top - pad) + 'px', left:(r.left - pad) + 'px', width:(r.width + pad*2) + 'px', height:(r.height + pad*2) + 'px'});
+  let tip = document.getElementById('tourTip'); if(!tip){ tip = document.createElement('div'); tip.id = 'tourTip'; tip.setAttribute('role','dialog'); tip.setAttribute('aria-live','polite'); document.body.appendChild(tip); }
+  const n = TOUR.steps.length, last = TOUR.i === n - 1;
+  tip.innerHTML = `<div class="tstep">${n > 1 ? `Tip ${TOUR.i + 1} of ${n}` : 'Tip'}</div><b>${esc(st.title)}</b><p>${esc(st.text)}</p>
+    <div class="tbtns"><button class="link" data-act="tourskip">${n > 1 && !last ? 'Skip tips' : ''}</button><span class="row" style="gap:8px">${TOUR.i ? '<button class="btn ghost sm" data-act="tourback">Back</button>' : ''}<button class="btn pen sm" data-act="tournext">${last ? 'Got it' : 'Next'}</button></span></div>`;
+  const tw = Math.min(340, innerWidth - 24); tip.style.width = tw + 'px';
+  const th = tip.offsetHeight || 160;
+  let top = r.bottom + pad + 10; if(top + th > innerHeight - 10) top = Math.max(10, r.top - pad - 10 - th);
+  let left = Math.min(Math.max(12, r.left), innerWidth - tw - 12);
+  Object.assign(tip.style, {top: top + 'px', left: left + 'px'});
+}
+addEventListener('resize', () => placeTour());
+addEventListener('scroll', () => placeTour(), true);
+
 function render(){
   const app = $('#app');
   const keep = {}; ['resume','jd','answer','follow','follow2','askq'].forEach(id=>{const el=document.getElementById(id); if(el) keep[id]=el.value;});
@@ -2024,7 +2168,7 @@ function render(){
     else if(S.step==='scoring' && S.error) body += `<div class="sheet"><p>The feedback couldn't be generated.</p><button class="btn pen" data-act="score">Try again</button></div>`;
     else body += ({setup:setupView, question:questionView, followup:followView, followup2:follow2View, self:selfView, feedback:feedbackView, scoring:()=>`<div class="sheet">${busyView()}</div>`, advancing:()=>`<div class="sheet"><div class="busy" role="status"><span class="dot"></span>Next question coming up…</div></div>`, askback:askbackView}[S.step])();
   }
-  app.innerHTML = `<header class="top"><button type="button" class="brand" data-act="home" title="Go to home"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></span><span>Interview Coach<small>Questions from your resume. Scores that show their evidence.</small></span></button>
+  app.innerHTML = `<header class="top"><button type="button" class="brand" data-act="home" title="Go to home"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></span><span>Interview Coach<small>Mock interviews for any role, with scores that show their evidence.</small></span></button>
     <nav class="tabs" aria-label="Sections">${tab('practice','Practice')}${tab('progress','Progress')}${tab('about','How scoring works')}${S.calOn?tab('calibrate','Calibrate'):''}${S.isOwner?tab('usage','Usage'):''}</nav></header>
     ${S.view==='practice' && S.step==='setup' ? keyCard() : ''}
     ${S.notice?`<div class="banner">${esc(S.notice)}</div>`:''}
@@ -2032,6 +2176,7 @@ function render(){
     ${S.error?`<p class="err" role="alert">${esc(S.error)}</p>`:''}
     ${S.shortWarn?`<div class="shortwarn" role="alert"><span>That's a short answer (${S.shortWarn.n} ${S.shortWarn.n===1?'word':'words'}). ${S.shortWarn.target==='answer' ? 'Real interview answers usually run 1 to 2 minutes.' : 'A sentence or two usually works better for a follow-up.'} Keep going, or submit it as it is and the coach will score exactly what you gave.</span><span class="row"><button class="btn ghost sm" data-act="keepanswering">Keep answering</button><button class="btn sm" data-act="submitanyway">Submit anyway</button></span></div>`:''}
     ${S.saveNote?`<p class="note foot">${esc(S.saveNote)}</p>`:''}`;
+  setTimeout(tourCheck, 80);
   const f = $('#file');
   if(f) f.onchange = async () => {
     const file = f.files[0]; if(!file) return;
@@ -2054,7 +2199,7 @@ document.addEventListener('click', e => {
   const act = b.dataset.act, v = b.dataset.v;
   if(act !== 'submitanyway' && act !== 'keepanswering') S.shortWarn = null;
   if(act !== 'delyes') S.notice = null;
-  if(act !== 'endask' && act !== 'endnow') S.confirmEnd = false;
+  if(act !== 'endask' && act !== 'endnow' && !act.startsWith('tour')) S.confirmEnd = false;
   if(act !== 'dictate' && rec){ recWant = false; rec.stop(); }
   if(act !== 'dictate' && S.timer && !/^(answer|follow|follow2)$/.test(act)) stopTimer();
   if(!/^(listen|dictate|tts-)/.test(act) && S.tts && S.tts !== 'idle') ttsStop();
@@ -2102,6 +2247,10 @@ document.addEventListener('click', e => {
   if(act==='retryweak'){ const L = sessAnswers(S.reportSid).filter(a => ansAvg(a) != null).sort((a, b) => ansAvg(a) - ansAvg(b)).slice(0, 2); S.retryQueue = L.map(a => a.id); S.retryFrom = S.reportSid; return startNextRetry(); }
   if(act==='retrynext') return startNextRetry();
   if(act==='retrydone'){ S.retryQueue = []; return startNextRetry(); }
+  if(act==='tournext'){ if(!TOUR) return; if(TOUR.i < TOUR.steps.length - 1){ TOUR.i++; placeTour(true); } else { tourMark(TOUR.key); closeTour(); } return; }
+  if(act==='tourback'){ if(TOUR && TOUR.i > 0){ TOUR.i--; placeTour(true); } return; }
+  if(act==='tourskip'){ Object.keys(TOURS).forEach(tourMark); closeTour(); return; }
+  if(act==='tourreset'){ Object.keys(TOURS).forEach(k => { try { localStorage.removeItem('ic_tour_' + k); } catch(e){} }); S.tourMem = {}; closeTour(); S.view = 'practice'; if(S.step !== 'setup'){} render(); return; }
   if(act==='endask'){ S.confirmEnd = true; return render(); }
   if(act==='endcancel'){ S.confirmEnd = false; return render(); }
   if(act==='endnow') return endNow();
