@@ -13,7 +13,9 @@
 <style>
 :root{
   --paper:#EEF2F6; --sheet:#FFFFFF; --ink:#16202C; --muted:#5A6676; --line:#D3DAE3;
-  --pen:#2340C9; --pen-ink:#FFFFFF; --warn:#A4441C; --ok:#1F7A4A;
+  --pen:#4338CA; --pen-ink:#FFFFFF; --warn:#C2410C; --ok:#047857;
+  --brand-soft:#EEF0FF; --brand-2:#0EA5A4; --amber:#B45309;
+  --t-intro:#4338CA; --t-motivation:#DB2777; --t-resume:#0F766E; --t-behavioral:#7C3AED; --t-situational:#EA580C; --t-industry:#0369A1; --t-craft:#B45309;
   --hl-relevance:#FFE27A; --hl-structure:#B5E2FF; --hl-specificity:#C4EFC0; --hl-impact:#FFC9DC; --hl-clarity:#DDCBFF;
   --sans:"Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
@@ -23,7 +25,9 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --paper:#10151B; --sheet:#18202A; --ink:#E6EBF1; --muted:#9AA6B5; --line:#2C3746;
-    --pen:#8EA2FF; --pen-ink:#0E1420; --warn:#FF9C70; --ok:#6FD39C;
+    --pen:#A5B4FC; --pen-ink:#0E1420; --warn:#FDBA74; --ok:#6EE7B7;
+    --brand-soft:#1E2140; --brand-2:#5EEAD4; --amber:#FCD34D;
+    --t-intro:#A5B4FC; --t-motivation:#F9A8D4; --t-resume:#5EEAD4; --t-behavioral:#C4B5FD; --t-situational:#FDBA74; --t-industry:#7DD3FC; --t-craft:#FCD34D;
     --hl-relevance:#6B5A12; --hl-structure:#1D4A66; --hl-specificity:#25512A; --hl-impact:#64253C; --hl-clarity:#43306B;
   }
 }
@@ -34,7 +38,7 @@
 }
 *,*::before,*::after{box-sizing:inherit}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+body{margin:0;min-height:100%;background:linear-gradient(180deg, var(--brand-soft) 0, var(--paper) 320px) no-repeat, var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--pen);outline-offset:2px}
 .wrap{max-width:1080px;margin:0 auto;padding:20px 20px 64px}
@@ -186,6 +190,59 @@ button.brand small{display:block}
 .endbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
 .modelans{margin-top:8px} .modelans summary{color:var(--pen);font-size:.9rem;font-weight:500}
 .modelans .rewrite{font-size:.98rem;margin-top:6px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:12px;color:#fff;background:linear-gradient(135deg,var(--pen),var(--brand-2));box-shadow:0 4px 14px color-mix(in srgb,var(--pen) 30%,transparent);flex:none}
+.sheet{box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 16px rgba(16,24,40,.05)}
+.btn.pen{background:linear-gradient(135deg,var(--pen),color-mix(in srgb,var(--pen) 70%,var(--brand-2)));border-color:transparent}
+.journey{display:flex;justify-content:space-between;align-items:center;gap:14px 20px;flex-wrap:wrap;background:var(--sheet);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin:0 0 16px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.jsteps{display:flex;align-items:center;gap:10px 22px;list-style:none;margin:0;padding:0;flex-wrap:wrap}
+.jstep{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.92rem}
+.jstep b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);font-size:.75rem;background:var(--sheet)}
+.jstep small{display:block;font-size:.76rem;color:var(--muted);font-weight:400}
+.jstep.now{color:var(--ink);font-weight:600}
+.jstep.now b{background:var(--pen);border-color:var(--pen);color:var(--pen-ink)}
+.jstep.done b{background:color-mix(in srgb,var(--ok) 14%,var(--sheet));border-color:var(--ok);color:var(--ok)}
+.jsegs{display:inline-flex;gap:3px;margin-left:4px}
+.jseg{width:18px;height:8px;border-radius:4px;background:color-mix(in srgb,var(--tc) 18%,var(--sheet));border:1px solid color-mix(in srgb,var(--tc) 40%,transparent)}
+.jseg.done{background:var(--tc);border-color:var(--tc)}
+.jseg.now{background:var(--tc);border-color:var(--tc);box-shadow:0 0 0 3px color-mix(in srgb,var(--tc) 25%,transparent)}
+.jside{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:.92rem}
+.btn.ghost.endbtn-o{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.endbtn{background:var(--warn);border-color:var(--warn);color:#fff}
+.endconfirm{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;background:color-mix(in srgb,var(--warn) 8%,var(--sheet));border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line));border-radius:10px;padding:6px 10px}
+.qcard{border-left:4px solid var(--tc)}
+.qtype{color:var(--tc)!important;border-color:color-mix(in srgb,var(--tc) 40%,transparent)!important;background:color-mix(in srgb,var(--tc) 10%,var(--sheet))}
+.sectitle{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.stepnum{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--pen);color:var(--pen-ink);font-size:.9rem;flex:none}
+.startcard{background:linear-gradient(135deg,color-mix(in srgb,var(--pen) 7%,var(--sheet)),color-mix(in srgb,var(--brand-2) 7%,var(--sheet)))}
+.choice[aria-pressed="true"]{background:color-mix(in srgb,var(--pen) 6%,var(--sheet))}
+.seg button[aria-pressed="true"]{background:var(--pen);color:var(--pen-ink)}
+nav.tabs button[aria-current="page"]{background:var(--pen);color:var(--pen-ink)}
+.itimer{border-color:color-mix(in srgb,var(--pen) 35%,var(--line));color:var(--pen)}
+.homehero{background:linear-gradient(135deg,color-mix(in srgb,var(--pen) 9%,var(--sheet)) 0,var(--sheet) 55%,color-mix(in srgb,var(--brand-2) 8%,var(--sheet)) 100%)}
+.herotitle{font-size:clamp(1.4rem,3vw,1.9rem);margin:2px 0 10px;letter-spacing:-0.02em}
+.herotitle .at{color:var(--muted);font-weight:500}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{border-radius:999px;padding:3px 11px;font-size:.84rem;background:var(--sheet);border:1px solid color-mix(in srgb,var(--pen) 25%,var(--line));color:var(--ink)}
+.progressbox{margin-top:18px;padding:14px 16px;border-radius:12px;background:var(--sheet);border:1px solid var(--line)}
+.jsegs.big{display:flex;gap:6px;margin:12px 0 0}
+.jsegs.big .jseg{flex:1;height:10px;border-radius:5px;width:auto}
+.timeline{display:flex;flex-wrap:wrap;gap:8px}
+.tl{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 5px;border-radius:999px;font-size:.86rem;border:1px solid color-mix(in srgb,var(--tc) 35%,var(--line));background:color-mix(in srgb,var(--tc) 8%,var(--sheet))}
+.tl b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--tc);color:#fff;font-size:.72rem}
+.tl.tlend{--tc:var(--ok)}
+.howto{margin:0;padding-left:20px} .howto li{margin-bottom:6px}
+.footlinks{margin:18px 4px 0}
+.footdel{margin:0 4px}
+.footdel .note, .footdel p{margin-top:4px}
+.trend{display:grid;gap:2px}
+.trow{display:grid;grid-template-columns:minmax(120px,1fr) 96px 92px 48px;align-items:center;gap:8px;padding:4px 0;font-size:.92rem}
+.trow.tover{font-weight:600;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:4px}
+.tname{display:flex;align-items:center;gap:6px}
+.tspark{color:var(--muted)} .tspark.up{color:var(--ok)} .tspark.down{color:var(--warn)}
+.tval{font-variant-numeric:tabular-nums;color:var(--muted)} .tval b{color:var(--ink)}
+.retrycta{background:linear-gradient(135deg,color-mix(in srgb,var(--ok) 9%,var(--sheet)),var(--sheet))}
+.retrybanner{border-left-color:var(--ok)}
 .michelp{border:1px solid var(--line);border-left:3px solid var(--pen);border-radius:8px;padding:12px 14px;margin-top:10px;font-size:.92rem;background:var(--paper)}
 .michelp ol{margin:8px 0;padding-left:20px} .michelp li{margin-bottom:4px}
 .speakctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
@@ -479,8 +536,10 @@ function anonId(){
   catch(e){ return S.anon || (S.anon = 'u' + Math.random().toString(36).slice(2,10)); }
 }
 function track(t, extra){
-  if(!S.metrics) return;
-  try { S.metrics.add({t, at:Date.now(), u:anonId(), ...(extra||{})}).catch(()=>{ S.metrics = null; }); } catch(e){ S.metrics = null; }
+  // anonymous counts only: just the event name, never resume or answer text
+  if(!CONFIG.PROXY_URL) return;
+  if(t === 'qrate') t = extra && extra.v === 'up' ? 'qrate_up' : 'qrate_down';
+  try { fetch(CONFIG.PROXY_URL.replace(/\/$/, '') + '/track', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({e:t}), keepalive:true}).catch(() => {}); } catch(e){}
 }
 const saveProfile = () => S.profile && persist('profile', {kind:'profile', ...S.profile});
 const saveAnswer = a => persist(a.id, {kind:'answer', ...a});
@@ -745,7 +804,7 @@ function setQuestion(q){
   if(!q || !q.question) throw new Error("Couldn't write a question. Try again.");
   const type = q.type || (S.profile ? nextType() : 'behavioral');
   S.cur = {id:'a'+Date.now(), q:{question:String(q.question), requirement_ids:(q.requirement_ids||[]).map(String), kind:type, type, angle:String(q.angle||''), coding:q.is_coding === true || q.is_coding === 'true'}, attempt:1, num:(S.profile && S.profile.sessAsked || 0) + 1};
-  if(S.profile){ ensureSess(); S.profile.sessAsked = (S.profile.sessAsked || 0) + 1; saveProfile(); }
+  if(S.profile){ ensureSess(); if(!S.profile.sessAsked) track('start'); S.profile.sessAsked = (S.profile.sessAsked || 0) + 1; saveProfile(); }
   S.draft.answer = ''; S.draft.follow = ''; S.step = 'question'; S.view = 'practice'; S.rec = {}; track('question', {kind:S.cur.q.kind}); S.speakNext = S.cur.q.question;
 }
 async function newQuestion(){
@@ -759,7 +818,7 @@ async function newQuestion(){
 const nextQuestion = () => run('Writing your next question…', newQuestion);
 
 function retry(){
-  const prev = S.cur; S.reviewing = null;
+  const prev = S.cur; S.reviewing = null; track('retry');
   S.cur = {id:'a'+Date.now(), q:prev.q, attempt:(prev.attempt||1)+1, retryOf:prev.retryOf || prev.id};
   S.draft.answer = ''; S.draft.follow = ''; S.step = 'question'; S.error = null; S.rec = {}; S.speakNext = S.cur.q.question; render();
 }
@@ -827,6 +886,7 @@ function afterFollowups(){
 function score(){
   run('Scoring against the rubric and checking its evidence…', async () => {
     await scoreAnswer(S.cur);
+    if(S.cur.retryOf){ const pv = prevAttempt(S.cur); if(pv && ansAvg(S.cur) != null && ansAvg(pv) != null && ansAvg(S.cur) > ansAvg(pv)) trackImproved('retry'); }
     S.step = 'feedback';
   });
 }
@@ -854,8 +914,11 @@ function bgScore(c){
   S.pending = S.pending || {};
   S.pending[c.id] = (async () => {
     c.session = c.session || (S.profile && S.profile.session);
-    for(let t = 0; t < 2; t++){ try { await scoreAnswer(c); return; } catch(e){ S.lastScoreError = e.message || ''; if(/limit|turned off|isn't available|expired/i.test(e.message || '')) break; } }
-    c.scoreFailed = true; S.unscored = (S.unscored || []).filter(x => x.id !== c.id).concat([c]);
+    if(!c.createdAt) c.createdAt = Date.now();
+    S.unscored = (S.unscored || []).filter(x => x.id !== c.id).concat([c]);
+    persist(c.id, {kind:'answer', ...c, pendingScore:true});
+    for(let t = 0; t < 2; t++){ try { await scoreAnswer(c); S.unscored = (S.unscored || []).filter(x => x.id !== c.id); return; } catch(e){ S.lastScoreError = e.message || ''; if(/limit|turned off|isn't available|expired/i.test(e.message || '')) break; } }
+    c.scoreFailed = true; track('score_fail'); S.unscored = (S.unscored || []).filter(x => x.id !== c.id).concat([c]);
   })().finally(() => { if(S.pending) delete S.pending[c.id]; });
 }
 
@@ -980,12 +1043,43 @@ const mmss = ms => { const x = Math.round((ms||0)/1000); return Math.floor(x/60)
 
 /* ---------- views ---------- */
 function stepper(){
-  const order = isReal() ? ['question','followup','askback'] : ['question','followup','feedback','askback'];
-  const cur = (S.step === 'self' || S.step === 'scoring') ? 'feedback' : S.step === 'followup2' ? 'followup' : S.step, ci = order.indexOf(cur);
-  const names = {question:'Question', followup:'Follow-up', feedback:'Feedback', askback:'Your questions'};
-  const ol = `<ol class="steps" aria-label="Interview progress">${order.map((s,i)=>`<li ${i===ci?'data-on aria-current="step"':''} ${i<ci?'data-done':''}><b>${i+1}</b>${names[s]}</li>`).join('')}</ol>`;
-  const n = sessionCount();
-  return `<div class="stepbar">${ol}<div class="row stepnav">${S.profile && S.profile.sessPlan ? `<span class="note">Question ${Math.max(1, S.profile.sessAsked || 0)} of ${S.profile.sessPlan.length}</span><span class="itimer ${sessLeftMs() <= 300000 ? 'low' : ''}" id="itimer" title="Counts only while you're answering">${timerText()}</span>${['feedback','self','scoring','askback'].includes(S.step) ? '<span class="note">Timer paused</span>' : ''}` : `<span class="note">${n ? `Question ${n + (S.step==='feedback' ? 0 : 1)}` : 'Question 1'}</span>`}<button class="link" data-act="home">Home</button>${(n || (S.profile && S.profile.sessAsked)) && S.step !== 'askback' ? `<button class="link" data-act="finish">End interview</button>` : ''}</div></div>`;
+  const p = S.profile, plan = (p && p.sessPlan) || [], asked = (p && p.sessAsked) || 0;
+  const inQ = ['question','followup','followup2','self','scoring','feedback','advancing'].includes(S.step);
+  const stage = S.step === 'askback' ? 3 : 2;
+  const segs = plan.map((t, i) => {
+    const state = (S.step === 'askback' || i < asked - 1 || (i === asked - 1 && ['feedback','scoring','advancing'].includes(S.step))) ? 'done' : (i === asked - 1 && inQ) ? 'now' : '';
+    return `<span class="jseg ${state}" style="--tc:var(--t-${t})" title="Question ${i+1}: ${esc((QTYPES[t]||{}).label||'')}"></span>`; }).join('');
+  const st = (k, label, sub) => `<li class="jstep ${k < stage ? 'done' : k === stage ? 'now' : ''}"><b>${k < stage ? '✓' : k}</b><span>${label}${sub ? `<small>${sub}</small>` : ''}</span></li>`;
+  const curType = S.cur && S.cur.q && QTYPES[S.cur.q.type];
+  return `<div class="journey">
+    <ol class="jsteps" aria-label="Interview progress">
+      ${st(1, 'Setup')}
+      <li class="jstep jq ${stage === 2 ? 'now' : 'done'}"><b>${stage > 2 ? '✓' : 2}</b><span>Questions<small>${stage === 2 ? `${Math.max(1, asked)} of ${plan.length}${curType ? ' · ' + curType.label : ''}` : `${plan.length} of ${plan.length}`}</small></span><span class="jsegs" aria-hidden="true">${segs}</span></li>
+      ${st(3, 'Your questions')}
+      ${st(4, 'Report')}
+    </ol>
+    <div class="jside">
+      <span class="itimer ${sessLeftMs() <= 300000 ? 'low' : ''}" id="itimer" title="Counts only while you're answering">${timerText()}</span>
+      ${['feedback','self','scoring','askback'].includes(S.step) ? '<span class="note">Timer paused</span>' : ''}
+      ${S.confirmEnd ? `<span class="endconfirm"><span>End now? Answers so far are scored${['question','followup','followup2'].includes(S.step) ? ', including what you\'ve typed' : ''}.</span><button class="btn sm endbtn" data-act="endnow">End and see report</button><button class="link" data-act="endcancel">Keep going</button></span>`
+        : `<button class="btn ghost sm endbtn-o" data-act="endask">End interview</button>`}
+      <button class="link" data-act="home">Home</button>
+    </div>
+  </div>`;
+}
+function endNow(){
+  if(rec){ recWant = false; rec.stop(); } if(S.timer) stopTimer(); ttsStop();
+  const id = S.step === 'question' ? 'answer' : S.step === 'followup' ? 'follow' : S.step === 'followup2' ? 'follow2' : '';
+  const el = id && document.getElementById(id), draft = el ? el.value.trim() : '';
+  const c = S.cur;
+  if(c && !c.result && ['question','followup','followup2'].includes(S.step)){
+    if(S.step === 'question'){ if((draft.match(/\S+/g) || []).length >= 3){ c.answer = draft; c.followup = ''; c.followAnswer = ''; } }
+    else if(S.step === 'followup'){ if(draft) c.followAnswer = draft; else { c.followup = ''; c.followAnswer = ''; } }
+    else if(S.step === 'followup2'){ if(draft) c.followAnswer2 = draft; else { c.followup2 = ''; c.followAnswer2 = ''; } }
+    if(c.answer){ c.self = {}; bgScore(c); }
+  }
+  S.confirmEnd = false; S.askDone = true; S.closing = false; S.cur = null;
+  return finishInterview();
 }
 const seg = (act, opts, val) => `<div class="seg" role="group">${opts.map(o=>`<button type="button" data-act="${act}" data-v="${esc(o)}" aria-pressed="${o===val}">${esc(o)}</button>`).join('')}</div>`;
 const pips = n => `<span class="pips" aria-label="${n==null?'not scored':n+' out of 5'}">${[1,2,3,4,5].map(i=>`<span class="pip ${n!=null&&i<=n?'on':''}"></span>`).join('')}</span>`;
@@ -1045,7 +1139,8 @@ const ROUNDS = {
 const ROUND_IDS = ['recruiter','hiring','final'];
 const curRound = () => (S.profile && S.profile.sessRound) || S.setup.round || 'hiring';
 const roundOf = () => ROUNDS[curRound()] || ROUNDS.hiring;
-const isEngRole = () => /\b(software|engineer|engineering|developer|programmer|sde|swe|devops|backend|back-end|frontend|front-end|full[- ]?stack|data engineer|machine learning engineer)\b/i.test(((S.profile && S.profile.setup && S.profile.setup.role) || '') + ' ' + ((S.profile && S.profile.jd) || '').slice(0, 400));
+const isEngRole = () => { const role = (S.profile && S.profile.setup && S.profile.setup.role) || ''; const text = role || ((S.profile && S.profile.jd) || '').slice(0, 120);
+  return /\b(software|developer|programmer|sde|swe|devops|backend|back-end|frontend|front-end|full[- ]?stack|engineer)\b/i.test(text) && !/\b(product|program|project|sales|support|solutions|customer|marketing)\s+(manager|engineer)?/i.test(text.replace(/engineering manager/i, '')); };
 const buildPlan = (round, len) => {
   const pl = (ROUNDS[round] || ROUNDS.hiring).pool.slice(0, QCOUNT[len] || 5);
   // engineering roles always get at least one skills (coding) question, even in short interviews
@@ -1089,6 +1184,36 @@ setInterval(() => {
   if(was > 0 && sessLeftMs() <= 0) render();
   if(Date.now() - lastSessSave > 20000){ lastSessSave = Date.now(); saveProfile(); }
 }, 1000);
+function onceKey(k){ try { if(localStorage.getItem(k)) return false; localStorage.setItem(k, '1'); return true; } catch(e){ S.onceMem = S.onceMem || {}; if(S.onceMem[k]) return false; S.onceMem[k] = 1; return true; } }
+function weekKey(){ const d = new Date(); const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day); return d.toISOString().slice(0,10); }
+function trackImproved(via){ if(onceKey('ic_imp_' + weekKey())) track('improved', {via}); }
+function sessionsTrend(){
+  const byS = {};
+  S.answers.filter(a => a.result && a.session && !String(a.session).includes(':retry')).forEach(a => { (byS[a.session] = byS[a.session] || []).push(a); });
+  return Object.entries(byS).map(([sid, L]) => ({sid, at:Math.min(...L.map(a => a.createdAt || 0)), overall:avg(L.map(ansAvg).filter(v => v != null)),
+    dims:Object.fromEntries(DIMS.map(d => [d.k, avg(L.map(a => a.result.scores[d.k].score).filter(v => v != null))]))})).sort((a, b) => a.at - b.at);
+}
+function spark(vals){
+  const pts = vals.map((v, i) => v == null ? null : [i, v]).filter(Boolean); if(pts.length < 2) return '';
+  const w = 92, h = 26, n = Math.max(1, vals.length - 1);
+  const X = i => (i / n * (w - 8) + 4).toFixed(1), Y = v => (h - 4 - (v - 1) / 4 * (h - 8)).toFixed(1);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts.map(([i, v]) => X(i) + ',' + Y(v)).join(' ')}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>${pts.map(([i, v]) => `<circle cx="${X(i)}" cy="${Y(v)}" r="2.4" fill="currentColor"/>`).join('')}</svg>`;
+}
+function improvementCard(){
+  const T = sessionsTrend().slice(-6);
+  if(T.length < 2) return `<h3>Your improvement</h3><p class="note" style="margin:0">Finish ${T.length ? 'one more interview' : 'two interviews'} to see how each skill changes over time. Retrying weak answers from a report counts too.</p>`;
+  const rows = [{k:'overall', name:'Overall', vals:T.map(x => x.overall)}, ...DIMS.map(d => ({k:d.k, name:d.name, vals:T.map(x => x.dims[d.k])}))];
+  const weak = DIMS.map(d => ({d, v:T[T.length-1].dims[d.k]})).filter(x => x.v != null).sort((a, b) => a.v - b.v)[0];
+  return `<h3>Your improvement</h3><p class="note" style="margin:0 0 8px">First vs latest, across your last ${T.length} interviews.</p>
+  <div class="trend">${rows.map(r => { const a = r.vals.find(v => v != null), b = [...r.vals].reverse().find(v => v != null), d = (a != null && b != null) ? b - a : null, cls = d > 0.05 ? 'up' : d < -0.05 ? 'down' : '';
+    return `<div class="trow ${r.k === 'overall' ? 'tover' : ''}"><span class="tname">${r.k !== 'overall' ? `<span class="swatch hl-${r.k}"></span>` : ''}${r.name}</span><span class="tspark ${cls}">${spark(r.vals)}</span><span class="tval">${fmt(a)} → <b>${fmt(b)}</b></span><span class="delta ${cls}">${d == null ? '' : (d > 0 ? '+' : '') + fmt(d)}</span></div>`; }).join('')}</div>
+  ${weak ? `<p class="note" style="margin:10px 0 0">Focus next: <b>${weak.d.name}</b> (${fmt(weak.v)} / 5 in your latest interview).</p>` : ''}`;
+}
+function startNextRetry(){
+  const id = (S.retryQueue || []).shift(), a = S.answers.find(x => x.id === id);
+  if(!a){ S.retryQueue = null; S.view = 'report'; S.reportSid = S.retryFrom; S.cur = null; S.step = 'setup'; return render(); }
+  S.cur = a; S.view = 'practice'; S.reviewing = null; retry(); S.cur.session = (S.retryFrom || 'x') + ':retry'; render(); window.scrollTo(0, 0);
+}
 function goNext(){ if(S.profile && sessOver()) return startAskback(); return nextQuestion(); }
 function endInterview(){
   if(S.step !== 'askback' && !S.askDone && S.profile && (sessionCount() || (S.pending && Object.keys(S.pending).length))) return startAskback();
@@ -1147,9 +1272,9 @@ function askbackView(){
     : `<div class="endbar"><div class="row"><button class="btn pen" data-act="finishnow">Finish the interview and see my report</button>${list.length < max ? `<button class="btn ghost" data-act="askmore">Ask another question</button>` : ''}</div>${list.length >= max ? '<span class="note">That\'s the most questions there\'s usually time for.</span>' : ''}</div>`}
   </div>`;
 }
-const sessionCount = () => S.profile && S.profile.session ? S.answers.filter(a => a.result && a.session === S.profile.session).length : 0;
+const sessionCount = () => S.profile && S.profile.session ? S.answers.filter(a => a.result && a.session === S.profile.session).length + (S.unscored || []).filter(a => a.session === S.profile.session && !S.answers.some(x => x.id === a.id)).length : 0;
 function goHome(){
-  S.reviewing = null;
+  S.reviewing = null; S.retryQueue = null;
   const mid = ['question','followup','followup2','self'].includes(S.step) && S.cur && !S.cur.result;
   S.paused = mid ? S.step : null;
   if(rec){ recWant = false; rec.stop(); }
@@ -1166,46 +1291,72 @@ function newInterview(){
 function setupView(){
   const p = S.profile;
   if(p && !S.editSetup){
-    const n = sessionCount(), total = S.answers.filter(a=>a.result).length;
-    const primary = S.paused ? `<button class="btn pen" data-act="resume">Continue your current question</button>`
-      : `<button class="btn pen" data-act="next" ${S.busy?'disabled':''}>${n ? 'Next question' : 'Start interview'}</button>`;
     ensureSess();
-    const tl = Math.ceil(sessLeftMs()/60000), plan = (p.sessPlan || []).length;
-    const status = S.paused ? `You left in the middle of question ${p.sessAsked || 1} of ${plan}. ${tl} min left.` : n ? `This interview: ${n} ${n===1?'question':'questions'} answered, ${Math.max(0, plan - (p.sessAsked||0))} to go, ${tl} min left.` : 'A new interview is ready to start.';
-    return `<div class="sheet">
+    const n = sessionCount(), plan = p.sessPlan || [], asked = p.sessAsked || 0, tl = Math.ceil(sessLeftMs()/60000);
+    const started = n > 0 || !!S.paused || asked > 0;
+    const pills = [roundOf().name, lenLabel(p.sessLen || S.setup.length || 30), isReal() ? 'Real interview' : 'Practice mode', esc(p.level) + ' level', S.setup.voice ? 'Spoken answers' : 'Typed answers'].map(t => `<span class="pill">${t}</span>`).join('');
+    const segs = plan.map((t, i) => `<span class="jseg ${(i < asked - (S.paused ? 1 : 0)) ? 'done' : (S.paused && i === asked - 1) ? 'now' : ''}" style="--tc:var(--t-${t})" title="${esc((QTYPES[t]||{}).label||'')}"></span>`).join('');
+    const timeline = plan.map((t, i) => `<span class="tl" style="--tc:var(--t-${t})"><b>${i+1}</b>${(QTYPES[t]||{}).label || t}</span>`).join('') + `<span class="tl tlend"><b>✓</b>Your questions</span><span class="tl tlend"><b>✓</b>Report</span>`;
+    const past = [...new Set(S.answers.filter(a => a.result && a.session && a.session !== p.session && !String(a.session).includes(':retry')).map(a => a.session))]
+      .map(sid => ({sid, L: sessAnswers(sid)})).filter(x => x.L.length).sort((x, y) => y.L[0].createdAt - x.L[0].createdAt).slice(0, 4);
+    const all = S.answers.filter(a => a.result);
+    const dims = DIMS.map(d => ({d, v: avg(all.map(a => a.result.scores[d.k].score).filter(v => v != null))})).filter(x => x.v != null);
+    const weak = dims.length ? dims.reduce((m, x) => x.v < m.v ? x : m) : null;
+    const primary = S.paused ? `<button class="btn pen" data-act="resume">Continue question ${asked}</button>` : `<button class="btn pen" data-act="next" ${S.busy?'disabled':''}>${started ? 'Next question' : 'Start interview'}</button>`;
+    return `<div class="sheet homehero">
       <div class="eyebrow">Your practice interview</div>
-      <h2>${esc(p.setup.role || 'Your target role')}${p.setup.company ? ' at '+esc(p.setup.company) : ''}</h2>
-      <p class="note" style="margin:0">${roundOf(p.sessLen || S.setup.length || 30).name}, ${lenLabel(p.sessLen || S.setup.length || 30)}. ${isReal() ? 'Real interview, feedback at the end' : 'Practice mode, feedback after each answer'}. ${esc(p.level)} level, ${S.setup.voice ? 'spoken answers' : 'typed answers'}.</p>
-      <p style="margin:12px 0 0">${status}${total > n ? ` <span class="note">${total} answered in all your interviews.</span>` : ''}</p>
-      ${(!n && !S.paused) ? `<div class="optrow" style="margin-top:6px"><div><label class="f">Interview round</label>${seg('round', ROUND_IDS.map(id=>ROUNDS[id].name), roundOf().name)}<p class="note" style="margin:6px 0 0">${roundOf().desc}</p></div><div><label class="f">Interview length</label>${seg('len', LENGTHS.map(x=>x.label), lenLabel(p.sessLen || S.setup.length || 30))}<p class="note" style="margin:6px 0 0">${QCOUNT[p.sessLen || S.setup.length || 30]} questions</p></div><div><label class="f">Mode</label>${seg('pmode2', ['Real interview','Practice mode'], (S.setup.mode || 'real') === 'real' ? 'Real interview' : 'Practice mode')}</div></div>` : ''}
-      <div class="actions">${primary}${n ? `<button class="btn ghost" data-act="finish">Finish and see report</button>` : ''}${(n || S.paused) ? `<button class="btn ghost" data-act="newinterview">Start a new interview</button>` : ''}</div>
-      <p class="note" style="margin-top:18px">Practicing for a different job? <button class="link" data-act="editsetup">Change resume or job</button></p>
-      ${deleteBlock()}
-    </div>`;
+      <h2 class="herotitle">${esc(p.setup.role || 'Your target role')}${p.setup.company ? ` <span class="at">at ${esc(p.setup.company)}</span>` : ''}</h2>
+      <div class="pills">${pills}</div>
+      ${started ? `<div class="progressbox">
+          <div class="spread"><b>${S.paused ? `You stopped in the middle of question ${asked} of ${plan.length}` : `${n} of ${plan.length} questions answered`}</b><span class="itimer">${tl} min left</span></div>
+          <div class="jsegs big">${segs}</div>
+        </div>
+        <div class="actions">${primary}${n ? `<button class="btn ghost" data-act="endnow">Finish and see report</button>` : ''}<button class="btn ghost" data-act="newinterview">Start a new interview</button></div>`
+      : `<p class="eyebrow" style="margin:18px 0 8px">What to expect</p>
+        <div class="timeline">${timeline}</div>
+        <details class="more"><summary>Change the format</summary>
+          <div class="optrow" style="margin-top:6px"><div><label class="f">Interview round</label>${seg('round', ROUND_IDS.map(id=>ROUNDS[id].name), roundOf().name)}<p class="note" style="margin:6px 0 0">${roundOf().desc}</p></div><div><label class="f">Interview length</label>${seg('len', LENGTHS.map(x=>x.label), lenLabel(p.sessLen || S.setup.length || 30))}<p class="note" style="margin:6px 0 0">${QCOUNT[p.sessLen || S.setup.length || 30]} questions</p></div><div><label class="f">Mode</label>${seg('pmode2', ['Real interview','Practice mode'], (S.setup.mode || 'real') === 'real' ? 'Real interview' : 'Practice mode')}</div></div>
+        </details>
+        <div class="actions">${primary}<span class="note">You can end at any time and see your report.</span></div>`}
+    </div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="sheet"><h3>Past interviews</h3>
+        ${past.length ? `<ul class="list">${past.map(x => `<li><span>${new Date(x.L[0].createdAt).toLocaleDateString()}<div class="sub">${x.L.length} ${x.L.length===1?'question':'questions'}</div></span><span class="row"><b>${fmt(avg(x.L.map(ansAvg).filter(v=>v!=null)))}</b><button class="btn ghost sm" data-act="openreport" data-s="${esc(x.sid)}">See report</button></span></li>`).join('')}</ul>`
+          : `<p class="note" style="margin:0">Your reports will appear here after your first interview.</p>`}
+      </div>
+      <div class="sheet">${sessionsTrend().length ? improvementCard() : weak ? `<h3>Your focus area</h3><p style="margin:0 0 6px"><span class="swatch hl-${weak.d.k}" style="display:inline-block;vertical-align:-1px"></span> <b>${weak.d.name}</b> is your lowest score so far (${fmt(weak.v)} / 5).</p><p class="note" style="margin:0">Across ${all.length} scored ${all.length===1?'answer':'answers'}. See everything in <button class="link" data-act="view" data-v="progress">Progress</button>.</p>`
+        : `<h3>How it works</h3><ol class="howto"><li><b>Answer</b> questions built from your resume and this job.</li><li><b>Get scored</b> on five skills, with the words that earned each score.</li><li><b>Improve</b> with a model answer for every question.</li></ol>`}
+      </div>
+    </div>
+    <p class="note footlinks">Practicing for a different job? <button class="link" data-act="editsetup">Change resume or job</button></p>
+    <div class="footdel">${deleteBlock()}</div>`;
   }
   const pchoice = (v, title, desc) => `<button type="button" class="choice" data-act="pmode" data-v="${v}" aria-pressed="${(S.setup.mode || 'real') === v}"><b>${title}</b><span>${desc}</span></button>`;
   const choice = (v, title, desc) => `<button type="button" class="choice" data-act="mode" data-v="${v}" aria-pressed="${(v==='voice')===!!S.setup.voice}"><b>${title}</b><span>${desc}</span></button>`;
   return `<div class="sheet">
-    <h2>${p ? 'Change your resume or job' : 'Set up your practice interview'}</h2>
+    <h2 class="sectitle"><span class="stepnum">1</span>${p ? 'Change your resume or job' : 'Your resume and the job'}</h2>
     <p class="note" style="margin:0">The coach writes questions from your resume and the job you want. ${CONFIG.PROXY_URL ? "Your answers are saved only in this browser. What you type is sent to an AI model to write questions and feedback, so leave out anything sensitive, like your phone number or home address." : "Your answers are saved only in this browser, but what you send is processed by Google's free Gemini API, which may use it to improve its models. Leave out anything sensitive, like your phone number or home address."}</p>
 
     <div class="grid2" style="margin-top:6px">
       <div>
-        <div class="labelrow"><label class="f" for="resume">1. Your resume</label><label class="uplink">Upload PDF<input type="file" id="file" accept=".pdf,.txt,.md,application/pdf,text/plain" hidden></label></div>
+        <div class="labelrow"><label class="f" for="resume">Your resume</label><label class="uplink">Upload PDF<input type="file" id="file" accept=".pdf,.txt,.md,application/pdf,text/plain" hidden></label></div>
         <textarea id="resume" placeholder="Paste your resume text, or upload a PDF">${esc(S.draft.resume ?? p?.resume ?? '')}</textarea>
         <span class="note" id="filenote"></span>
       </div>
       <div>
-        <div class="labelrow"><label class="f" for="jd">2. The job description</label></div>
+        <div class="labelrow"><label class="f" for="jd">The job description</label></div>
         <textarea id="jd" placeholder="Paste the full job posting">${esc(S.draft.jd ?? p?.jd ?? '')}</textarea>
       </div>
     </div>
 
-    <label class="f">3. How will you answer?</label>
+  </div>
+  <div class="sheet sec">
+    <h2 class="sectitle"><span class="stepnum">2</span>Interview format</h2>
+    <label class="f">How will you answer?</label>
     <div class="choices">${choice('type','Type my answers','Write each answer in a text box.')}${choice('voice','Speak my answers','Questions are read aloud and you answer out loud. Adds pace and filler-word feedback. Chrome, Edge or Safari.')}</div>
     ${S.setup.voice ? `<label class="check" style="margin-top:10px"><input type="checkbox" id="autoread" ${S.setup.autoRead?'checked':''}><span>Read each question aloud automatically <span class="note">(you can pause, stop or replay it)</span></span></label>` : ''}
 
-    <label class="f">4. How do you want to practice?</label>
+    <label class="f">How do you want to practice?</label>
     <div class="choices">${pchoice('real','Real interview','Like the real thing: the timer runs, the interviewer moves on, and all feedback comes at the end.')}${pchoice('practice','Practice mode','Feedback after every answer, and the timer pauses while you read it.')}</div>
     <div class="optrow">
       <div><label class="f">Interview round</label>${seg('round', ROUND_IDS.map(id=>ROUNDS[id].name), ROUNDS[S.setup.round || 'hiring'].name)}<p class="note" style="margin:6px 0 0">${ROUNDS[S.setup.round || 'hiring'].desc}</p></div>
@@ -1216,6 +1367,10 @@ function setupView(){
       <label class="check"><input type="checkbox" id="selfscore" ${S.setup.selfScore?'checked':''}><span><b>Score myself before seeing feedback</b><br><span class="note">Practice mode only. Shows where the coach agrees with you, and where to trust it less.</span></span></label>
     </details>
 
+  </div>
+  <div class="sheet sec startcard">
+    <h2 class="sectitle"><span class="stepnum">3</span>Start</h2>
+    <p class="note" style="margin:0">You'll get a ${lenLabel(S.setup.length || 30)} ${ROUNDS[S.setup.round || 'hiring'].name.toLowerCase()} with ${QCOUNT[S.setup.length || 30]} questions, ${(S.setup.mode || 'real') === 'real' ? 'feedback at the end' : 'feedback after each answer'}, then your questions for the interviewer. You can end at any time and see your report.</p>
     <div class="actions startbar">
       <button class="btn pen" data-act="start" ${S.busy || !S.sample ? 'disabled':''}>${p ? 'Save and start' : 'Start interview'}</button>
       ${p ? `<button class="btn ghost" data-act="canceledit">Cancel</button>` : `<span class="note">or try a sample interview, no resume needed:</span><span class="samples">${Object.entries(SAMPLES).map(([k, x]) => `<button class="chipbtn" data-act="sample" data-k="${k}" ${S.busy||!S.sample?'disabled':''}>${x.label}</button>`).join('')}</span>`}
@@ -1226,7 +1381,7 @@ function setupView(){
 function questionBlock(c, small){
   const reqs = reqText(c.q.requirement_ids);
   const n = c.num || null, qt = QTYPES[c.q.type];
-  return `<div class="qhead"><span class="eyebrow" style="margin:0">${n ? 'Question '+n : 'Question'}${c.attempt>1?`, attempt ${c.attempt}`:''}${qt ? ` <span class="qtype">${qt.label}</span>` : ''}</span>${!small && S.setup.voice ? `<span class="speakctl" id="speakctl">${speakCtl()}</span>` : ''}</div>
+  return `<div class="qhead"><span class="eyebrow" style="margin:0">${n ? 'Question '+n : 'Question'}${c.attempt>1?`, attempt ${c.attempt}`:''}${qt ? ` <span class="qtype" style="--tc:var(--t-${esc(c.q.type)})">${qt.label}</span>` : ''}</span>${!small && S.setup.voice ? `<span class="speakctl" id="speakctl">${speakCtl()}</span>` : ''}</div>
   <p class="q ${small?'small':''}">${esc(c.q.question)}</p>
   ${!small && reqs.length ? `<p class="qfocus">Checks: ${reqs.map(esc).join('; ')}</p>` : ''}`;
 }
@@ -1241,7 +1396,7 @@ function answerFoot(id, lo, hi){
 }
 function questionView(){
   const c = S.cur;
-  return `<div class="sheet">${sessTimeUp() ? `<p class="warnline">Time's up. Finish this answer, then you'll see your report.</p>` : ''}${questionBlock(c)}
+  return `<div class="sheet qcard" style="--tc:var(--t-${esc(c.q.type || 'intro')})">${sessTimeUp() ? `<p class="warnline">Time's up. Finish this answer, then you'll see your report.</p>` : ''}${questionBlock(c)}
     <label class="f" for="answer">Your answer</label>
     ${c.q.coding ? `<p class="note" style="margin:0 0 6px">Write your code in any language, then explain your approach and its time and space complexity underneath. Type this one, even in voice mode. Code isn't run, so it's reviewed the way an interviewer reads a whiteboard.</p>` : ''}
     <textarea id="answer" class="answer${c.q.coding ? ' code' : ''}" spellcheck="${c.q.coding ? 'false' : 'true'}" placeholder="${c.q.coding ? '# Your code here\n\n# Approach and complexity:' : S.setup.voice ? 'Press Start speaking and answer out loud. Your words appear here, and you can fix any mistakes before submitting.' : 'Type your answer as you would say it out loud.'}">${esc(S.draft.answer||'')}</textarea>
@@ -1253,7 +1408,7 @@ function questionView(){
 
 function follow2View(){
   const c = S.cur;
-  return `<div class="sheet">${questionBlock(c, true)}<div class="prior">${esc(c.answer)}
+  return `<div class="sheet qcard" style="--tc:var(--t-${esc(c.q.type || 'intro')})">${questionBlock(c, true)}<div class="prior">${esc(c.answer)}
 
 Follow-up: ${esc(c.followup)}
 ${esc(c.followAnswer)}</div>
@@ -1265,7 +1420,7 @@ ${esc(c.followAnswer)}</div>
 }
 function followView(){
   const c = S.cur;
-  return `<div class="sheet">${questionBlock(c, true)}<div class="prior">${esc(c.answer)}</div>
+  return `<div class="sheet qcard" style="--tc:var(--t-${esc(c.q.type || 'intro')})">${questionBlock(c, true)}<div class="prior">${esc(c.answer)}</div>
     <div class="qhead"><span class="eyebrow" style="margin:0">Follow-up${c.probing ? ': ' + esc(c.probing) : ''}</span>${S.setup.voice ? `<span class="speakctl" id="speakctl">${speakCtl()}</span>` : ''}</div>
     <p class="q">${esc(c.followup)}</p>
     <label class="f" for="follow">Your follow-up answer</label>
@@ -1378,7 +1533,7 @@ function feedbackView(){
   </div>
   ${deliveryHtml(c) ? `<div class="sheet sec">${deliveryHtml(c).replace('<div style="margin-top:26px">','<div>')}</div>` : ''}
   ${!S.reviewing && sessOver() ? `<div class="banner" style="margin-top:18px">${sessTimeUp() ? "Time's up. That's the end of your interview." : "That was the last question of your interview."} Next, the interviewer will ask if you have questions.</div>` : ''}
-  <div class="actionbar">${S.reviewing ? `<div class="row"><button class="btn pen" data-act="backreport">Back to report</button><button class="btn ghost" data-act="retry">Practice this question again</button></div>` : sessOver()
+  <div class="actionbar">${S.retryQueue ? `<div class="row">${S.retryQueue.length ? '<button class="btn pen" data-act="retrynext">Next weak answer</button>' : '<button class="btn pen" data-act="retrydone">Back to report</button>'}<button class="btn ghost" data-act="retry">Try this one again</button></div>` : S.reviewing ? `<div class="row"><button class="btn pen" data-act="backreport">Back to report</button><button class="btn ghost" data-act="retry">Practice this question again</button></div>` : sessOver()
     ? `<div class="row"><button class="btn pen" data-act="finish">Continue</button><button class="btn ghost" data-act="retry">Retry this question</button></div>`
     : `<div class="row"><button class="btn pen" data-act="next">Next question</button><button class="btn ghost" data-act="retry">Retry this question</button></div><button class="link" data-act="finish">End interview and see report</button>`}</div>`;
 }
@@ -1399,7 +1554,7 @@ function progressView(){
   const pct = x => x==null ? '–' : Math.round(x*100)+'%';
   const V = A.filter(a=>a.delivery && a.delivery.answer);
   const vline = V.length ? `<div class="sheet" style="margin-bottom:18px"><h3>Delivery</h3><p style="margin:0">Across ${V.length} spoken ${V.length===1?'answer':'answers'}: average pace ${Math.round(avg(V.map(a=>a.delivery.answer.wpm).filter(x=>x!=null))||0)} words per minute, ${fmt(avg(V.map(a=>a.delivery.answer.fillerTotal)))} filler words and ${fmt(avg(V.map(a=>a.delivery.answer.pauses).filter(x=>x!=null)))} long pauses per answer.</p></div>` : '';
-  return `<div class="metrics">
+  return `<div class="sheet" style="margin-bottom:18px">${improvementCard()}</div><div class="metrics">
     <div class="metric"><div class="v">${pct(verRate)}</div><div class="k">Scores whose quote was found in your answer</div></div>
     <div class="metric"><div class="v">${sp?pct(ag/sp):'–'}</div><div class="k">Coach agreed with your self-score within 1 point</div></div>
     <div class="metric"><div class="v">${disputes}</div><div class="k">Scores you disagreed with</div></div>
@@ -1417,7 +1572,7 @@ function progressView(){
     </div>
   </div>
   <div class="sheet" style="margin-top:18px"><h3>Interviews</h3>
-    <ul class="list">${[...new Set(sorted.map(a=>a.session||'earlier'))].map(sid=>{ const L = sessAnswers(sid), cur = S.profile && sid === S.profile.session;
+    <ul class="list">${[...new Set(sorted.map(a=>a.session||'earlier'))].filter(sid => !String(sid).includes(':retry')).map(sid=>{ const L = sessAnswers(sid), cur = S.profile && sid === S.profile.session;
       return `<li><span>${new Date(L[0].createdAt).toLocaleDateString()}${cur?' (in progress)':''}<div class="sub">${L.length} ${L.length===1?'question':'questions'}</div></span><span class="row"><b>${fmt(avg(L.map(ansAvg).filter(v=>v!=null)))}</b>${cur?`<button class="btn ghost sm" data-act="finish">Finish and see report</button>`:`<button class="btn ghost sm" data-act="openreport" data-s="${esc(sid)}">See report</button>`}</span></li>`; }).join('')}</ul>
   </div>
   <div class="sheet" style="margin-top:18px"><h3>Answer history</h3>
@@ -1630,10 +1785,13 @@ async function finishInterview(){
   const list = sessAnswers(sid);
   if(!list.length){
     const waiting = (S.unscored || []).some(c => c.session === sid);
-    if(!waiting){ S.error = 'Answer at least one question before finishing the interview.'; S.step = 'setup'; S.view = 'practice'; S.closing = false; return render(); }
+    if(!waiting){ S.view = 'report'; S.reportSid = sid; S.reportEmpty = true; S.closing = false; S.step = 'setup'; return render(); }
     S.reportSid = sid; S.view = 'report'; S.closing = false; S.step = 'setup'; return render();
   }
   S.reportSid = sid; S.view = 'report'; S.closing = false; track('finish', {n:list.length});
+  { const T = sessionsTrend(), k = T.findIndex(x => x.sid === sid);
+    if(onceKey('ic_activated')) track('activated');
+    if(k > 0){ track('returned'); if(T[k].overall != null && T[k-1].overall != null && T[k].overall > T[k-1].overall + 0.05) trackImproved('interview'); } }
   if(S.profile){ sessInit(); saveProfile(); }
   S.step = 'setup';
   if(!S.reports[sid] && list.length){
@@ -1668,6 +1826,9 @@ function reportView(){
   const sid = S.reportSid, list = sessAnswers(sid), rep = S.reports[sid];
   const waiting = (S.unscored || []).filter(c => c.session === sid).length;
   const why = /limit/i.test(S.lastScoreError || '') ? "Today's free AI limit was reached, so scoring will work again later." : (S.lastScoreError || 'The AI service had a problem answering.');
+  if(!list.length && !waiting) return `<div class="sheet"><h2>There's nothing to score in this interview</h2>
+    <p>No answers were submitted. Questions you skip aren't scored, and answers in progress are lost if the page is reloaded before you press Submit.</p>
+    <div class="actions"><button class="btn pen" data-act="newinterview">Start a new interview</button><button class="btn ghost" data-act="home">Back to home</button></div></div>`;
   if(!list.length) return `<div class="sheet"><h2>Your answers are saved, but they couldn't be scored yet</h2>
     <p>${waiting} ${waiting===1?'answer is':'answers are'} waiting. ${esc(why)}</p>
     <div class="actions"><button class="btn pen" data-act="rescore">Try scoring again</button><button class="btn ghost" data-act="home">Back to home</button></div></div>`;
@@ -1682,10 +1843,11 @@ function reportView(){
   const num = a => list.indexOf(a) + 1;
   const ansCard = (label, a) => `<div class="metric"><div class="k">${label}</div><p style="margin:6px 0">${num(a)}. ${esc(a.q.question)}</p><div class="spread"><b>${fmt(ansAvg(a))} / 5</b><button class="link" data-act="retryq" data-i="${a.id}">Retry this question</button></div></div>`;
   return `<div class="sheet">
-    <div class="spread"><div><h2>Interview report</h2><p class="note" style="margin:0">${esc(S.profile?.setup.role || '')}${S.profile?.setup.company ? ' at '+esc(S.profile.setup.company) : ''}. ${list.length} ${list.length===1?'question':'questions'}, ${new Date(list[0].createdAt).toLocaleDateString()}.</p></div>
-    <div class="big">${fmt(avg(list.map(ansAvg).filter(v=>v!=null)))}<small> / 5</small></div></div>
+    <div class="spread"><div><div class="eyebrow">Step 4 · Report</div><h2>Interview report</h2><p class="note" style="margin:0">${esc(S.profile?.setup.role || '')}${S.profile?.setup.company ? ' at '+esc(S.profile.setup.company) : ''}. ${list.length} ${list.length===1?'question':'questions'}, ${new Date(list[0].createdAt).toLocaleDateString()}.</p></div>
+    <div style="text-align:right"><div class="big">${fmt(avg(list.map(ansAvg).filter(v=>v!=null)))}<small> / 5</small></div>${(() => { const T = sessionsTrend(), k = T.findIndex(x => x.sid === sid); if(k < 1 || T[k].overall == null || T[k-1].overall == null) return ''; const d = T[k].overall - T[k-1].overall; return `<div class="delta-line ${d > 0.05 ? 'up' : d < -0.05 ? 'down' : ''}">${d > 0.05 ? '+' + fmt(d) + ' vs your last interview' : d < -0.05 ? fmt(d) + ' vs your last interview' : 'Same as your last interview'}</div>`; })()}</div></div>
     ${rep ? `<p class="q small" style="margin-top:16px">${esc(rep.headline)}</p>` : `<p class="note" style="margin-top:16px">The written summary couldn't be generated. The numbers below are still complete. <button class="link" data-act="regenrep">Try the summary again</button></p>`}
   </div>
+  ${list.length ? `<div class="sheet sec retrycta"><div class="spread"><span><b>Fastest way to improve:</b> retry your ${Math.min(2, list.length) === 1 ? 'weakest answer' : Math.min(2, list.length) + ' weakest answers'} now, with feedback right after each, and see your score change.</span><button class="btn pen" data-act="retryweak">Retry ${Math.min(2, list.length) === 1 ? 'weakest answer' : Math.min(2, list.length) + ' weakest answers'}</button></div></div>` : ''}
   ${rep ? `<div class="grid2" style="margin-top:18px">
     <div class="sheet"><h3>Work on these next</h3><ol class="prio">${rep.priorities.map(p=>`<li><b>${esc(p.title)}</b><br>${esc(p.detail)}</li>`).join('')}</ol></div>
     <div class="sheet"><h3>What went well</h3>${rep.strengths.map(t=>`<p style="margin:0 0 10px">${esc(t)}</p>`).join('') || '<p class="note">None noted.</p>'}</div>
@@ -1795,12 +1957,12 @@ function render(){
   else if(S.view==='usage') body = usageView();
   else if(S.view==='report') body = S.busy ? `<div class="sheet">${busyView()}</div>` : reportView();
   else {
-    body = (S.step === 'setup' || S.reviewing) ? '' : stepper();
+    body = (S.step === 'setup' || S.reviewing) ? '' : S.retryQueue ? `<div class="banner retrybanner">Retrying a weak answer from your report. ${S.cur && S.cur.retryOf ? (() => { const a = S.answers.find(x => x.id === S.cur.retryOf); return a && ansAvg(a) != null ? 'Your first score was ' + fmt(ansAvg(a)) + ' / 5.' : ''; })() : ''} ${S.retryQueue.length ? S.retryQueue.length + ' more after this.' : 'Last one.'} <button class="link" data-act="retrydone">Stop and go back to the report</button></div>` : stepper();
     if(S.busy) body += `<div class="sheet">${busyView()}</div>`;
     else if(S.step==='scoring' && S.error) body += `<div class="sheet"><p>The feedback couldn't be generated.</p><button class="btn pen" data-act="score">Try again</button></div>`;
     else body += ({setup:setupView, question:questionView, followup:followView, followup2:follow2View, self:selfView, feedback:feedbackView, scoring:()=>`<div class="sheet">${busyView()}</div>`, advancing:()=>`<div class="sheet"><div class="busy" role="status"><span class="dot"></span>Next question coming up…</div></div>`, askback:askbackView}[S.step])();
   }
-  app.innerHTML = `<header class="top"><button type="button" class="brand" data-act="home" title="Go to home">Interview Coach<small>Questions from your resume. Scores that show their evidence.</small></button>
+  app.innerHTML = `<header class="top"><button type="button" class="brand" data-act="home" title="Go to home"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></span><span>Interview Coach<small>Questions from your resume. Scores that show their evidence.</small></span></button>
     <nav class="tabs" aria-label="Sections">${tab('practice','Practice')}${tab('progress','Progress')}${tab('about','How scoring works')}${S.calOn?tab('calibrate','Calibrate'):''}${S.isOwner?tab('usage','Usage'):''}</nav></header>
     ${S.view==='practice' && S.step==='setup' ? keyCard() : ''}
     ${S.notice?`<div class="banner">${esc(S.notice)}</div>`:''}
@@ -1830,6 +1992,7 @@ document.addEventListener('click', e => {
   const act = b.dataset.act, v = b.dataset.v;
   if(act !== 'submitanyway' && act !== 'keepanswering') S.shortWarn = null;
   if(act !== 'delyes') S.notice = null;
+  if(act !== 'endask' && act !== 'endnow') S.confirmEnd = false;
   if(act !== 'dictate' && rec){ recWant = false; rec.stop(); }
   if(act !== 'dictate' && S.timer && !/^(answer|follow|follow2)$/.test(act)) stopTimer();
   if(!/^(listen|dictate|tts-)/.test(act) && S.tts && S.tts !== 'idle') ttsStop();
@@ -1874,6 +2037,12 @@ document.addEventListener('click', e => {
   if(act==='nudgeno'){ S.nudgeOff = {...(S.nudgeOff||{}), [S.profile?.session]: true}; return render(); }
   if(act==='finish') return endInterview();
   if(act==='rescore'){ delete S.reports[S.reportSid]; return rescore(S.reportSid); }
+  if(act==='retryweak'){ const L = sessAnswers(S.reportSid).filter(a => ansAvg(a) != null).sort((a, b) => ansAvg(a) - ansAvg(b)).slice(0, 2); S.retryQueue = L.map(a => a.id); S.retryFrom = S.reportSid; return startNextRetry(); }
+  if(act==='retrynext') return startNextRetry();
+  if(act==='retrydone'){ S.retryQueue = []; return startNextRetry(); }
+  if(act==='endask'){ S.confirmEnd = true; return render(); }
+  if(act==='endcancel'){ S.confirmEnd = false; return render(); }
+  if(act==='endnow') return endNow();
   if(act==='finishnow'){ S.askDone = true; S.askMore = false; S.closing = true; return finishInterview(); }
   if(act==='askmore'){ S.askMore = true; render(); const el = document.getElementById('askq'); if(el) el.focus(); return; }
   if(act==='askq') return askSubmit();
@@ -1909,6 +2078,7 @@ document.addEventListener('click', e => {
   if(act==='disagree'){ S.disputeOpen = b.dataset.d; render(); const i = document.getElementById('disp-'+b.dataset.d); if(i) i.focus(); return; }
   if(act==='savedisp') return saveDispute(b.dataset.d);
 });
+document.addEventListener('toggle', e => { const t = e.target; if(t && t.classList && t.classList.contains('modelans') && t.open) track('model_open'); }, true);
 document.addEventListener('keydown', e => {
   if(e.key === 'Tab' && e.target && e.target.classList && e.target.classList.contains('code')){
     e.preventDefault(); const t = e.target, a = t.selectionStart, z = t.selectionEnd;
@@ -1931,6 +2101,7 @@ document.addEventListener('keydown', e => {
         else if(x.kind === 'asks' && x.session){ S.asks = S.asks || {}; S.asks[x.session] = x.items || []; }
         else if(x.kind === 'cal'){ S.cal.push(x); S.calOn = true; }
         else if(x.kind === 'answer' && x.result){ S.answers.push(x); }
+        else if(x.kind === 'answer' && x.pendingScore && x.answer){ S.unscored = (S.unscored || []).concat([x]); }
       });
       S.answers.sort((a,b)=>a.createdAt-b.createdAt); S.cal.sort((a,b)=>a.createdAt-b.createdAt);
       if(S.profile){ S.setup.type = S.profile.type || S.setup.type; S.setup.level = S.profile.level || S.setup.level; if(S.profile.selfScore!=null) S.setup.selfScore = S.profile.selfScore; if(S.profile.voice!=null) S.setup.voice = S.profile.voice; if(S.profile.length) S.setup.length = S.profile.length; if(S.profile.mode) S.setup.mode = S.profile.mode; if(S.profile.round) S.setup.round = S.profile.round; if(S.profile.autoRead!=null) S.setup.autoRead = S.profile.autoRead; }
@@ -1938,6 +2109,7 @@ document.addEventListener('keydown', e => {
   }
   S.saveNote = S.store ? (CONFIG.PROXY_URL ? "Free demo with a daily usage limit. Your answers and reports are saved only in this browser." : "Free demo on Google's Gemini free tier. Google may use what you send to improve its models, and people may review it. Everything else stays in this browser.") : "Your browser isn't allowing this page to save, so your progress lasts until you close the page.";
   S.loaded = true; render();
+  if(onceKey('ic_visit_' + new Date().toISOString().slice(0,10))) track('visit');
 })();
 
 </script>
