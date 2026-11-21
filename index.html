@@ -2089,7 +2089,7 @@ const TOURS = {
   question: [
     {sel:'.jsteps', title:'Your progress', text:"Shows which question you're on. After the questions come your questions for the interviewer, then your report."},
     {sel:'#itimer', title:'Time left', text:"The timer only runs while you're answering."},
-    {sel:'[data-act=endask]', title:'End the interview any time', text:"Want to stop early? Press End interview. Everything you've answered, including what's typed right now, is scored and you go straight to your report. It's also at the bottom, next to Skip."},
+    {sel:'[data-act=endask]', title:'End the interview any time', text:"Want to stop early? Press End interview. Everything you've answered, including what's typed right now, is scored, and you go straight to your report. There's also an End interview link at the bottom, next to Skip."},
     {sel:'#answer', title:'Your answer', text:"Answer as you would out loud, for about 1 to 2 minutes. In voice mode, press Start speaking and your words appear here so you can fix mistakes before you submit."},
     {sel:'[data-act=skip]', title:'Skip a question', text:"Not a good question for you? Skip it and you'll get a different one."}],
   followup: [
@@ -2139,7 +2139,7 @@ function placeTour(scroll){
   let tip = document.getElementById('tourTip'); if(!tip){ tip = document.createElement('div'); tip.id = 'tourTip'; tip.setAttribute('role','dialog'); tip.setAttribute('aria-live','polite'); document.body.appendChild(tip); }
   const n = TOUR.steps.length, last = TOUR.i === n - 1;
   tip.innerHTML = `<div class="tstep">${n > 1 ? `Tip ${TOUR.i + 1} of ${n}` : 'Tip'}</div><b>${esc(st.title)}</b><p>${esc(st.text)}</p>
-    <div class="tbtns"><button class="link" data-act="tourskip">${n > 1 && !last ? 'Skip tips' : ''}</button><span class="row" style="gap:8px">${TOUR.i ? '<button class="btn ghost sm" data-act="tourback">Back</button>' : ''}<button class="btn pen sm" data-act="tournext">${last ? 'Got it' : 'Next'}</button></span></div>`;
+    <div class="tbtns"><button class="link" data-act="tourskip">${n > 1 && !last ? 'Skip these tips' : ''}</button><span class="row" style="gap:8px">${TOUR.i ? '<button class="btn ghost sm" data-act="tourback">Back</button>' : ''}<button class="btn pen sm" data-act="tournext">${last ? 'Got it' : 'Next'}</button></span></div>`;
   const tw = Math.min(340, innerWidth - 24); tip.style.width = tw + 'px';
   const th = tip.offsetHeight || 160;
   let top = r.bottom + pad + 10; if(top + th > innerHeight - 10) top = Math.max(10, r.top - pad - 10 - th);
@@ -2249,7 +2249,7 @@ document.addEventListener('click', e => {
   if(act==='retrydone'){ S.retryQueue = []; return startNextRetry(); }
   if(act==='tournext'){ if(!TOUR) return; if(TOUR.i < TOUR.steps.length - 1){ TOUR.i++; placeTour(true); } else { tourMark(TOUR.key); closeTour(); } return; }
   if(act==='tourback'){ if(TOUR && TOUR.i > 0){ TOUR.i--; placeTour(true); } return; }
-  if(act==='tourskip'){ Object.keys(TOURS).forEach(tourMark); closeTour(); return; }
+  if(act==='tourskip'){ if(TOUR) tourMark(TOUR.key); closeTour(); return; }
   if(act==='tourreset'){ Object.keys(TOURS).forEach(k => { try { localStorage.removeItem('ic_tour_' + k); } catch(e){} }); S.tourMem = {}; closeTour(); S.view = 'practice'; if(S.step !== 'setup'){} render(); return; }
   if(act==='endask'){ S.confirmEnd = true; return render(); }
   if(act==='endcancel'){ S.confirmEnd = false; return render(); }
