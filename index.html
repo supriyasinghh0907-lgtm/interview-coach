@@ -783,7 +783,7 @@ function startSetup(){
   const resume = ($('#resume').value || '').trim().slice(0, 14000);
   const jd = ($('#jd').value || '').trim().slice(0, 14000);
   S.draft.resume = resume; S.draft.jd = jd;
-  if(resume.length < 150){ S.error = 'Add your resume: paste the text or upload a PDF.'; return render(); }
+  if(resume.length < 150){ S.error = 'Add your resume first (paste it or upload a PDF), or click one of the sample roles below to try a full interview without one.'; return render(); }
   if(jd.length < 150){ S.error = 'Paste the full job description so questions match the role.'; return render(); }
   run('Reading the job and writing your first question…', async () => {
     const r = await ask(setupPrompt(resume, jd), 'default');
@@ -1373,7 +1373,7 @@ function setupView(){
     <p class="note" style="margin:0">You'll get a ${lenLabel(S.setup.length || 30)} ${ROUNDS[S.setup.round || 'hiring'].name.toLowerCase()} with ${QCOUNT[S.setup.length || 30]} questions, ${(S.setup.mode || 'real') === 'real' ? 'feedback at the end' : 'feedback after each answer'}, then your questions for the interviewer. You can end at any time and see your report.</p>
     <div class="actions startbar">
       <button class="btn pen" data-act="start" ${S.busy || !S.sample ? 'disabled':''}>${p ? 'Save and start' : 'Start interview'}</button>
-      ${p ? `<button class="btn ghost" data-act="canceledit">Cancel</button>` : `<span class="note">or try a sample interview, no resume needed:</span><span class="samples">${Object.entries(SAMPLES).map(([k, x]) => `<button class="chipbtn" data-act="sample" data-k="${k}" ${S.busy||!S.sample?'disabled':''}>${x.label}</button>`).join('')}</span>`}
+      ${p ? `<button class="btn ghost" data-act="canceledit">Cancel</button>` : `<span class="note">or start a sample interview right away, no resume needed:</span><span class="samples">${Object.entries(SAMPLES).map(([k, x]) => `<button class="chipbtn" data-act="sample" data-k="${k}" title="Start a sample ${x.label.toLowerCase()} interview now" ${S.busy||!S.sample?'disabled':''}><span aria-hidden="true">▶</span> ${x.label}</button>`).join('')}</span>`}
     </div>
   </div>`;
 }
