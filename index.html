@@ -2117,16 +2117,22 @@ function tourScreen(){
   if(S.retryQueue) return null;
   return {question:'question', followup:'followup', askback:'askback'}[S.step] || null;
 }
+function flushSpeak(){
+  if(!S.pendingSpeak || TOUR) return;
+  const t = S.pendingSpeak; S.pendingSpeak = null;
+  if(S.view === 'practice' && ['question','followup','followup2','askback'].includes(S.step) && !rec) speak(t);
+}
 function tourCheck(){
   const k = tourScreen();
   if(TOUR && TOUR.key !== k){ tourMark(TOUR.key); closeTour(); }
   if(TOUR){ placeTour(); return; }
-  if(!k || tourDone(k)) return;
+  if(!k || tourDone(k)) return flushSpeak();
   const steps = TOURS[k].filter(st => document.querySelector(st.sel));
-  if(!steps.length) return;
+  if(!steps.length) return flushSpeak();
+  try { if(window.speechSynthesis) speechSynthesis.cancel(); } catch(e){}
   TOUR = {key:k, i:0, steps}; placeTour(true);
 }
-function closeTour(){ TOUR = null; ['tourSpot','tourTip'].forEach(id => { const el = document.getElementById(id); if(el) el.remove(); }); }
+function closeTour(){ TOUR = null; ['tourSpot','tourTip'].forEach(id => { const el = document.getElementById(id); if(el) el.remove(); }); setTimeout(flushSpeak, 200); }
 function placeTour(scroll){
   if(!TOUR) return;
   const st = TOUR.steps[TOUR.i]; let el = document.querySelector(st.sel);
@@ -2191,7 +2197,7 @@ function render(){
   const c2 = $('#calr2'); if(c2) c2.onchange = () => { S.r2 = c2.checked; render(); };
   const fs = $('#focus'); if(fs) fs.onchange = () => { S.focus = fs.value || null; };
   if(!(S.cur && S.cur.q && S.cur.q.coding)) meter('answer', 150, 300); meter('follow', 40, 150); meter('follow2', 30, 120);
-  if(S.speakNext && S.setup.voice && S.setup.autoRead){ const t = S.speakNext; S.speakNext = null; setTimeout(()=>speak(t), 150); } else S.speakNext = null;
+  if(S.speakNext && S.setup.voice && S.setup.autoRead){ S.pendingSpeak = S.speakNext; S.speakNext = null; } else S.speakNext = null;
 }
 
 document.addEventListener('click', e => {
